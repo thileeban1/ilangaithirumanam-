@@ -1,17 +1,17 @@
 rules_version = '2';
 
-// This app has no Firebase Auth — the teacher-only screens are gated by a
-// plain-text password stored inside the "settings" document, checked in the
-// browser. That is NOT a real security boundary: anyone who can read/write
-// the "app" collection can also read the password or overwrite the data.
-// These rules simply scope reads/writes to that one collection so nothing
-// else in the project is exposed. For real protection, add Firebase
-// Authentication and tighten the "write" rule below to require a signed-in
-// teacher account.
+// Students never sign in (they only enter an Access Code inside the app),
+// so reads on the "app" collection stay public — that is how the student
+// screens load grades/subjects/recordings. Writes (adding a grade, a
+// student, a recording, changing the school name, etc.) require a signed-in
+// Firebase Auth user — only accounts you create yourself in the Firebase
+// Console (Authentication -> Users -> Add user) can sign in as a teacher,
+// so only people you explicitly grant an account can write data.
 service cloud.firestore {
   match /databases/{database}/documents {
     match /app/{docId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if request.auth != null;
     }
     match /{document=**} {
       allow read, write: if false;
