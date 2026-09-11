@@ -45,16 +45,17 @@ npm run dev
 
 http://localhost:5173 திறந்து பார்க்கவும். "நான் ஆசிரியர்" -> Firebase Console-ல் நீங்கள் உருவாக்கிய மின்னஞ்சல்/கடவுச்சொல் வைத்து நுழையவும்.
 
-## 3. Public Website ஆக Deploy செய்தல்
+## 3. Public Website ஆக Deploy செய்தல் (GitHub Pages — தானியங்கி)
 
-எந்த static-hosting சேவையும் பயன்படுத்தலாம் (Vercel, Netlify, Firebase Hosting). எடுத்துக்காட்டாக **Vercel**:
+இந்த repo-வில் `.github/workflows/deploy.yml` ஏற்கனவே சேர்க்கப்பட்டுள்ளது — `main` branch-க்கு push ஆகும் ஒவ்வொரு முறையும் தானாக build செய்து GitHub Pages-க்கு deploy செய்துவிடும். நீங்கள் செய்ய வேண்டியது 3 one-time steps மட்டும்:
 
-1. இந்த repo-வை GitHub-ல் இருந்து Vercel-ல் import பண்ணவும்.
-2. Build command: `npm run build`, Output directory: `dist` (Vercel தானாகவே கண்டுபிடிக்கும்).
-3. Project Settings -> Environment Variables-ல் மேலே உள்ள 6 `VITE_FIREBASE_*` மதிப்புகளையும் சேர்க்கவும்.
-4. Deploy செய்தவுடன் கிடைக்கும் URL-ஐ யார் வேண்டுமானாலும் (Google account இல்லாமல் கூட) திறந்து, ஆசிரியர் கொடுத்த Access Code வைத்து மாணவர்களாக நுழையலாம்.
+1. **Settings -> Secrets and variables -> Actions -> New repository secret** -ல் மேலே உள்ள 6 `VITE_FIREBASE_*` பெயர்களையும் (values-உடன்) ஒவ்வொன்றாக சேர்க்கவும்.
+2. **Settings -> Pages** -ல் "Build and deployment -> Source" -ஐ **GitHub Actions** என மாற்றவும்.
+3. இந்த மாற்றங்கள் `main` branch-ல் merge ஆகியதும் (அல்லது **Actions** tab -> "Deploy to GitHub Pages" -> **Run workflow**), 1-2 நிமிடத்தில் இங்கே உங்கள் website கிடைக்கும்:
 
-Firebase Hosting வேண்டுமெனில்: `npm i -g firebase-tools`, `firebase login`, `firebase init hosting` (public directory: `dist`), `npm run build && firebase deploy`.
+   **`https://thileeban1.github.io/ilangaithirumanam-/`**
+
+Vercel / Netlify / Firebase Hosting விரும்பினால் அவையும் வேலை செய்யும் — build command `npm run build`, output directory `dist`, 6 env vars சேர்த்தால் போதும்.
 
 ## தரவு எங்கே சேமிக்கப்படுகிறது?
 
