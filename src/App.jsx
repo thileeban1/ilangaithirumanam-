@@ -1,6 +1,22 @@
 import React, { useState, useEffect, useRef } from "react";
 import { doc, onSnapshot, setDoc } from "firebase/firestore";
-import { db, firebaseConfigured } from "./firebase.js";
+import {
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut,
+  sendPasswordResetEmail,
+} from "firebase/auth";
+import { db, auth, firebaseConfigured } from "./firebase.js";
+
+const AUTH_ERROR_MESSAGES = {
+  "auth/invalid-credential": "மின்னஞ்சல் அல்லது கடவுச்சொல் தவறு.",
+  "auth/wrong-password": "மின்னஞ்சல் அல்லது கடவுச்சொல் தவறு.",
+  "auth/user-not-found": "மின்னஞ்சல் அல்லது கடவுச்சொல் தவறு.",
+  "auth/invalid-email": "மின்னஞ்சல் முறையற்றது.",
+  "auth/too-many-requests": "பல தவறான முயற்சிகள். சிறிது நேரம் கழித்து முயற்சிக்கவும்.",
+  "auth/user-disabled": "இந்த கணக்கு முடக்கப்பட்டுள்ளது.",
+};
+const authErrorMessage = (e) => AUTH_ERROR_MESSAGES[e?.code] || "உள்நுழைய முடியவில்லை. மீண்டும் முயற்சிக்கவும்.";
 
 // ---------- helpers ----------
 const genCode = () => {
@@ -22,7 +38,6 @@ const fmtDate = (d) => {
 };
 
 const DEFAULT_SETTINGS = {
-  teacherPass: "",
   schoolName: "கதிரவன் கல்வி நிறுவனம்",
   tagline: "உங்கள் நம்பகமான கற்றல் பங்காளி",
 };
@@ -43,6 +58,13 @@ export default function LMS() {
   const [passInput, setPassInput] = useState("");
   const [codeInput, setCodeInput] = useState("");
   const [activeStudent, setActiveStudent] = useState(null);
+
+  // teacher: auth
+  const [teacherUser, setTeacherUser] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
+  const [teacherEmail, setTeacherEmail] = useState("");
+  const [authBusy, setAuthBusy] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
 
   // teacher: brand
   const [nameDraft, setNameDraft] = useState("");
@@ -69,6 +91,18 @@ export default function LMS() {
   const [showCodeList, setShowCodeList] = useState(false);
 
   const settingsInitRef = useRef(false);
+
+  useEffect(() => {
+    if (!firebaseConfigured || !auth) {
+      setAuthReady(true);
+      return;
+    }
+    const unsub = onAuthStateChanged(auth, (user) => {
+      setTeacherUser(user);
+      setAuthReady(true);
+    });
+    return unsub;
+  }, []);
 
   useEffect(() => {
     if (!firebaseConfigured || !db) {
@@ -136,21 +170,43 @@ export default function LMS() {
   const saveStudents = (v) => persist("students", v, setStudents);
   const saveSettings = (v) => persist("settings", v, setSettings);
 
-  // ---------- teacher: login ----------
-  const handleTeacherLogin = () => {
-    if (!settings.teacherPass) {
-      if (!passInput.trim()) return setError("கடவுச்சொல்லை உள்ளிடவும்.");
-      saveSettings({ ...settings, teacherPass: passInput.trim() });
+  // ---------- teacher: auth ----------
+  const goTeacher = () => {
+    setError("");
+    setScreen(teacherUser ? "teacher" : "teacherLogin");
+  };
+
+  const handleTeacherSignIn = async () => {
+    if (!teacherEmail.trim() || !passInput.trim()) return setError("மின்னஞ்சல் மற்றும் கடவுச்சொல்லை உள்ளிடவும்.");
+    setAuthBusy(true);
+    setError("");
+    try {
+      await signInWithEmailAndPassword(auth, teacherEmail.trim(), passInput);
+      setPassInput("");
       setScreen("teacher");
-      setError("");
-      return;
+    } catch (e) {
+      setError(authErrorMessage(e));
+    } finally {
+      setAuthBusy(false);
     }
-    if (passInput.trim() === settings.teacherPass) {
-      setScreen("teacher");
-      setError("");
-    } else {
-      setError("கடவுச்சொல் தவறு.");
+  };
+
+  const handleForgotPassword = async () => {
+    if (!teacherEmail.trim()) return setError("முதலில் மின்னஞ்சலை உள்ளிடவும்.");
+    setAuthBusy(true);
+    setError("");
+    try {
+      await sendPasswordResetEmail(auth, teacherEmail.trim());
+      setResetSent(true);
+    } catch (e) {
+      setError(authErrorMessage(e));
+    } finally {
+      setAuthBusy(false);
     }
+  };
+
+  const handleTeacherLogout = () => {
+    signOut(auth).catch(() => {});
   };
 
   const saveBrand = () => {
@@ -338,8 +394,18 @@ export default function LMS() {
     badge: { fontSize: 11, fontFamily: "'IBM Plex Mono',monospace", color: "#F2A93B", background: "#241B0D", border: "1px solid #4A3A17", padding: "3px 8px", borderRadius: 6 },
   };
 
-  const Back = ({ to, label }) => (
-    <button style={styles.backBar} onClick={() => { setError(""); setPassInput(""); setCodeInput(""); setScreen(to); }}>
+  const Back = ({ to, label, logout }) => (
+    <button
+      style={styles.backBar}
+      onClick={() => {
+        setError("");
+        setPassInput("");
+        setCodeInput("");
+        setResetSent(false);
+        if (logout) handleTeacherLogout();
+        setScreen(to);
+      }}
+    >
       ← {label}
     </button>
   );
@@ -371,7 +437,7 @@ export default function LMS() {
     );
   }
 
-  if (loading) {
+  if (loading || !authReady) {
     return (
       <div style={styles.page}>
         <Header />
@@ -392,7 +458,7 @@ export default function LMS() {
         </div>
         <div style={styles.section}>
           <div style={styles.sectionTitle}>தொடர்வது எப்படி?</div>
-          <button style={styles.roleCard} onClick={() => setScreen("teacherLogin")}>
+          <button style={styles.roleCard} onClick={goTeacher}>
             <span style={{ fontSize: 26 }}>👩‍🏫</span><span>நான் ஆசிரியர்</span>
           </button>
           <button style={styles.roleCard} onClick={() => setScreen("studentLogin")}>
@@ -411,13 +477,38 @@ export default function LMS() {
         <Back to="home" label="பின்செல்" />
         <div style={styles.section}>
           <div style={styles.eyebrow}>ஆசிரியர் நுழைவு</div>
-          <h1 style={styles.h1}>{settings.teacherPass ? "கடவுச்சொல்லை உள்ளிடவும்" : "புதிய கடவுச்சொல் அமைக்கவும்"}</h1>
+          <h1 style={styles.h1}>உங்கள் கணக்கில் உள்நுழையவும்</h1>
         </div>
         {error && <div style={styles.errBox}>{error}</div>}
+        {resetSent && <div style={styles.flash}>கடவுச்சொல் மீட்டமைக்க link மின்னஞ்சலுக்கு அனுப்பப்பட்டது.</div>}
         <div style={styles.card}>
+          <label style={styles.label}>மின்னஞ்சல்</label>
+          <input
+            style={styles.input}
+            type="email"
+            autoComplete="username"
+            value={teacherEmail}
+            onChange={(e) => setTeacherEmail(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleTeacherSignIn()}
+            placeholder="teacher@example.com"
+          />
           <label style={styles.label}>கடவுச்சொல்</label>
-          <input style={styles.input} type="password" value={passInput} onChange={(e) => setPassInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleTeacherLogin()} placeholder="கடவுச்சொல்" />
-          <button style={styles.btnPrimary} onClick={handleTeacherLogin}>{settings.teacherPass ? "LOGIN NOW" : "அமைத்து நுழைக"}</button>
+          <input
+            style={styles.input}
+            type="password"
+            autoComplete="current-password"
+            value={passInput}
+            onChange={(e) => setPassInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleTeacherSignIn()}
+            placeholder="கடவுச்சொல்"
+          />
+          <button style={styles.btnPrimary} onClick={handleTeacherSignIn} disabled={authBusy}>
+            {authBusy ? "உள்நுழைகிறது…" : "LOGIN NOW"}
+          </button>
+          <div style={{ height: 12 }} />
+          <button style={styles.linkBtn} onClick={handleForgotPassword} disabled={authBusy}>
+            கடவுச்சொல் மறந்துவிட்டதா?
+          </button>
         </div>
       </div>
     );
@@ -522,10 +613,19 @@ export default function LMS() {
 
   // ---------- TEACHER DASHBOARD ----------
   if (screen === "teacher") {
+    if (!teacherUser) {
+      // session ended (signed out elsewhere / token expired) — back to login
+      return (
+        <div style={styles.page}>
+          <Header />
+          <Back to="teacherLogin" label="மீண்டும் உள்நுழையவும்" />
+        </div>
+      );
+    }
     return (
       <div style={styles.page}>
         <Header />
-        <Back to="home" label="வெளியேறு" />
+        <Back to="home" label="வெளியேறு" logout />
         <div style={styles.section}>
           <div style={styles.eyebrow}>ஆசிரியர் பலகை</div>
           <h1 style={styles.h1}>வகுப்பை நிர்வகிக்கவும்</h1>
