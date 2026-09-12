@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Class Portal LMS
  * Description: தரம் / பாடம் / Zoom Link / Recordings / PDF குறிப்புகளை நிர்வகிக்கவும், மாணவர்கள் ஒரு Access Code மூலம் தங்களுக்கான பாடங்களை மட்டும் பார்க்கவும் உதவும் எளிய LMS.
- * Version: 1.0.5
+ * Version: 1.0.6
  * Author: Class Portal
  * Text Domain: class-portal-lms
  */
@@ -11,7 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'CPLMS_VERSION', '1.0.5' );
+define( 'CPLMS_VERSION', '1.0.6' );
 define( 'CPLMS_MAX_RECORDING_VIEWS', 3 );
 define( 'CPLMS_PATH', plugin_dir_path( __FILE__ ) );
 define( 'CPLMS_URL', plugin_dir_url( __FILE__ ) );
@@ -370,7 +370,7 @@ function cplms_print_whatsapp_button() {
 }
 add_action( 'wp_footer', 'cplms_print_whatsapp_button', 100 );
 
-function cplms_parse_lines( $raw ) {
+function cplms_parse_lines( $raw, $auto_label_prefix = '' ) {
 	$items = array();
 	foreach ( preg_split( "/\r\n|\r|\n/", (string) $raw ) as $line ) {
 		$line = trim( $line );
@@ -378,9 +378,16 @@ function cplms_parse_lines( $raw ) {
 			continue;
 		}
 		$parts = array_map( 'trim', explode( '|', $line, 2 ) );
+		$url   = $parts[1] ?? $parts[0];
+		$label = $parts[0];
+		// No " | title" given (teacher pasted just a raw link) — show a
+		// short, tidy label instead of the whole URL wrapping on screen.
+		if ( '' !== $auto_label_prefix && $label === $url ) {
+			$label = $auto_label_prefix . ' ' . ( count( $items ) + 1 );
+		}
 		$items[] = array(
-			'label' => $parts[0],
-			'url'   => $parts[1] ?? $parts[0],
+			'label' => $label,
+			'url'   => $url,
 		);
 	}
 	return $items;
@@ -442,8 +449,8 @@ function cplms_shortcode( $atts ) {
 				<div class="cplms-subjects">
 					<?php foreach ( $subjects as $subject ) :
 						$zoom       = get_post_meta( $subject->ID, '_cp_zoom_link', true );
-						$recordings = cplms_parse_lines( get_post_meta( $subject->ID, '_cp_recordings', true ) );
-						$pdfs       = cplms_parse_lines( get_post_meta( $subject->ID, '_cp_pdfs', true ) );
+						$recordings = cplms_parse_lines( get_post_meta( $subject->ID, '_cp_recordings', true ), 'Recording' );
+						$pdfs       = cplms_parse_lines( get_post_meta( $subject->ID, '_cp_pdfs', true ), 'PDF' );
 						?>
 						<div class="cplms-subject-card">
 							<h3><?php echo esc_html( $subject->post_title ); ?></h3>

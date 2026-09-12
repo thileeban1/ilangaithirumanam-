@@ -167,6 +167,8 @@
 	color: #3730a3;
 	text-decoration: none;
 	font-weight: 500;
+	word-break: break-word;
+	overflow-wrap: break-word;
 }
 
 .cplms-list a:hover {
