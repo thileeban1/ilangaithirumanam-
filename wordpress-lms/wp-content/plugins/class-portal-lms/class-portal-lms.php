@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Class Portal LMS
  * Description: தரம் / பாடம் / Zoom Link / Recordings / PDF குறிப்புகளை நிர்வகிக்கவும், மாணவர்கள் ஒரு Access Code மூலம் தங்களுக்கான பாடங்களை மட்டும் பார்க்கவும் உதவும் எளிய LMS.
- * Version: 1.0.1
+ * Version: 1.0.2
  * Author: Class Portal
  * Text Domain: class-portal-lms
  */
@@ -11,7 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'CPLMS_VERSION', '1.0.1' );
+define( 'CPLMS_VERSION', '1.0.2' );
 define( 'CPLMS_PATH', plugin_dir_path( __FILE__ ) );
 define( 'CPLMS_URL', plugin_dir_url( __FILE__ ) );
 
@@ -280,6 +280,25 @@ function cplms_print_inline_style() {
 	}
 }
 add_action( 'wp_head', 'cplms_print_inline_style', 100 );
+
+/**
+ * Hides the theme's default "Proudly powered by WordPress" / "Designed with
+ * WordPress" footer credit, whatever theme is active — works by finding any
+ * link to wordpress.org in the footer and hiding its containing line.
+ */
+function cplms_hide_wp_credit() {
+	?>
+	<script>
+	document.addEventListener('DOMContentLoaded', function () {
+		document.querySelectorAll('a[href*="wordpress.org"]').forEach(function (a) {
+			var line = a.closest('p, li, span, div');
+			if (line) { line.style.display = 'none'; }
+		});
+	});
+	</script>
+	<?php
+}
+add_action( 'wp_footer', 'cplms_hide_wp_credit', 100 );
 
 function cplms_parse_lines( $raw ) {
 	$items = array();
