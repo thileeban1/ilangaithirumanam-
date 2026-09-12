@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Class Portal LMS
  * Description: தரம் / பாடம் / Zoom Link / Recordings / PDF குறிப்புகளை நிர்வகிக்கவும், மாணவர்கள் ஒரு Access Code மூலம் தங்களுக்கான பாடங்களை மட்டும் பார்க்கவும் உதவும் எளிய LMS.
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author: Class Portal
  * Text Domain: class-portal-lms
  */
@@ -11,7 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'CPLMS_VERSION', '1.0.0' );
+define( 'CPLMS_VERSION', '1.0.1' );
 define( 'CPLMS_PATH', plugin_dir_path( __FILE__ ) );
 define( 'CPLMS_URL', plugin_dir_url( __FILE__ ) );
 
@@ -267,6 +267,19 @@ function cplms_enqueue_assets() {
 	wp_enqueue_style( 'cplms-style', CPLMS_URL . 'assets/style.css', array(), CPLMS_VERSION );
 }
 add_action( 'wp_enqueue_scripts', 'cplms_enqueue_assets' );
+
+/**
+ * Some free-hosting cache/minify setups strip or delay plugin-enqueued CSS.
+ * Printing the same stylesheet inline in <head> guarantees the design shows
+ * up regardless of caching plugins on the host.
+ */
+function cplms_print_inline_style() {
+	$css_file = CPLMS_PATH . 'assets/style.css';
+	if ( file_exists( $css_file ) ) {
+		echo '<style id="cplms-inline-style">' . file_get_contents( $css_file ) . '</style>'; // phpcs:ignore
+	}
+}
+add_action( 'wp_head', 'cplms_print_inline_style', 100 );
 
 function cplms_parse_lines( $raw ) {
 	$items = array();
