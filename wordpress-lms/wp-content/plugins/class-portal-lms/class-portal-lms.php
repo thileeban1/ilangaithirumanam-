@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Class Portal LMS
  * Description: தரம் / பாடம் / Zoom Link / Recordings / PDF குறிப்புகளை நிர்வகிக்கவும், மாணவர்கள் ஒரு Access Code மூலம் தங்களுக்கான பாடங்களை மட்டும் பார்க்கவும் உதவும் எளிய LMS.
- * Version: 1.0.4
+ * Version: 1.0.5
  * Author: Class Portal
  * Text Domain: class-portal-lms
  */
@@ -11,7 +11,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'CPLMS_VERSION', '1.0.4' );
+define( 'CPLMS_VERSION', '1.0.5' );
+define( 'CPLMS_MAX_RECORDING_VIEWS', 3 );
 define( 'CPLMS_PATH', plugin_dir_path( __FILE__ ) );
 define( 'CPLMS_URL', plugin_dir_url( __FILE__ ) );
 
@@ -451,10 +452,24 @@ function cplms_shortcode( $atts ) {
 							<?php endif; ?>
 							<?php if ( ! empty( $recordings ) ) : ?>
 								<div class="cplms-list">
-									<strong>Recordings</strong>
+									<strong>Recordings (ஒவ்வொன்றும் அதிகபட்சம் <?php echo (int) CPLMS_MAX_RECORDING_VIEWS; ?> முறை)</strong>
 									<ul>
-										<?php foreach ( $recordings as $r ) : ?>
-											<li><a href="<?php echo esc_url( $r['url'] ); ?>" target="_blank" rel="noopener">▶ <?php echo esc_html( $r['label'] ); ?></a></li>
+										<?php
+										$views = get_post_meta( $student->ID, '_cp_recording_views', true );
+										$views = is_array( $views ) ? $views : array();
+										foreach ( $recordings as $r ) :
+											$key       = md5( $r['url'] );
+											$used      = isset( $views[ $key ] ) ? (int) $views[ $key ] : 0;
+											$remaining = max( 0, CPLMS_MAX_RECORDING_VIEWS - $used );
+											?>
+											<li>
+												<?php if ( $remaining > 0 ) : ?>
+													<a href="<?php echo esc_url( add_query_arg( array( 'cplms_watch' => 1, 'code' => $entered_code, 'key' => $key ), get_permalink() ) ); ?>" target="_blank" rel="noopener">▶ <?php echo esc_html( $r['label'] ); ?></a>
+													<span class="cplms-views-left">(<?php echo esc_html( $remaining ); ?>/<?php echo (int) CPLMS_MAX_RECORDING_VIEWS; ?> முறை மீதம்)</span>
+												<?php else : ?>
+													<span class="cplms-limit-reached">▶ <?php echo esc_html( $r['label'] ); ?> — 3 முறை பார்த்துவிட்டீர்கள்</span>
+												<?php endif; ?>
+											</li>
 										<?php endforeach; ?>
 									</ul>
 								</div>
@@ -480,6 +495,72 @@ function cplms_shortcode( $atts ) {
 	return ob_get_clean();
 }
 add_shortcode( 'class_portal', 'cplms_shortcode' );
+
+/**
+ * Gate recording links behind a per-student view counter: a click goes
+ * through this handler first, which redirects to the real URL only while
+ * the student is under CPLMS_MAX_RECORDING_VIEWS for that specific
+ * recording, otherwise shows a limit-reached notice instead.
+ */
+function cplms_handle_watch_redirect() {
+	if ( empty( $_GET['cplms_watch'] ) || empty( $_GET['code'] ) || empty( $_GET['key'] ) ) {
+		return;
+	}
+
+	$code = strtoupper( trim( sanitize_text_field( wp_unslash( $_GET['code'] ) ) ) );
+	$key  = sanitize_text_field( wp_unslash( $_GET['key'] ) );
+
+	$students = get_posts( array(
+		'post_type'      => 'cp_student',
+		'posts_per_page' => 1,
+		'meta_key'       => '_cp_access_code',
+		'meta_value'     => $code,
+	) );
+	if ( empty( $students ) ) {
+		wp_die( 'தவறான Access Code.' );
+	}
+	$student = $students[0];
+
+	$subject_ids = get_post_meta( $student->ID, '_cp_subject_ids', true );
+	$subject_ids = is_array( $subject_ids ) ? $subject_ids : array();
+	$subjects    = ! empty( $subject_ids ) ? get_posts( array( 'post_type' => 'cp_subject', 'post__in' => $subject_ids, 'posts_per_page' => -1 ) ) : array();
+
+	$target_url = '';
+	foreach ( $subjects as $subject ) {
+		$recordings = cplms_parse_lines( get_post_meta( $subject->ID, '_cp_recordings', true ) );
+		foreach ( $recordings as $r ) {
+			if ( md5( $r['url'] ) === $key ) {
+				$target_url = $r['url'];
+				break 2;
+			}
+		}
+	}
+	if ( '' === $target_url ) {
+		wp_die( 'Recording கிடைக்கவில்லை.' );
+	}
+
+	$views = get_post_meta( $student->ID, '_cp_recording_views', true );
+	$views = is_array( $views ) ? $views : array();
+	$used  = isset( $views[ $key ] ) ? (int) $views[ $key ] : 0;
+
+	if ( $used >= CPLMS_MAX_RECORDING_VIEWS ) {
+		wp_die(
+			'<div style="font-family:sans-serif;text-align:center;padding:60px 20px;max-width:480px;margin:0 auto;">'
+			. '<h2>மன்னிக்கவும் 🙏</h2>'
+			. '<p>இந்த recording-ஐ ஏற்கனவே ' . (int) CPLMS_MAX_RECORDING_VIEWS . ' முறை பார்த்துவிட்டீர்கள். மீண்டும் பார்க்க இயலாது.</p>'
+			. '<p><a href="' . esc_url( home_url() ) . '">← திரும்பிச் செல்ல</a></p>'
+			. '</div>',
+			'பார்வை வரம்பு முடிந்தது'
+		);
+	}
+
+	$views[ $key ] = $used + 1;
+	update_post_meta( $student->ID, '_cp_recording_views', $views );
+
+	wp_redirect( $target_url );
+	exit;
+}
+add_action( 'template_redirect', 'cplms_handle_watch_redirect' );
 
 /* ---------------------------------------------------------------------
  * 5. Activation: flush rewrite rules, seed a demo page

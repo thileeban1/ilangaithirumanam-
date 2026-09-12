@@ -185,6 +185,17 @@
 	text-decoration: underline;
 }
 
+.cplms-views-left {
+	font-size: 12px;
+	color: #9333ea;
+	margin-left: 4px;
+}
+
+.cplms-limit-reached {
+	color: #9ca3af;
+	text-decoration: line-through;
+}
+
 .cplms-whatsapp-float {
 	position: fixed;
 	right: 20px;
