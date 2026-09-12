@@ -53,7 +53,7 @@ http://localhost:5173 திறந்து பார்க்கவும். "
 2. **Settings -> Pages** -ல் "Build and deployment -> Source" -ஐ **GitHub Actions** என மாற்றவும்.
 3. இந்த மாற்றங்கள் `main` branch-ல் merge ஆகியதும் (அல்லது **Actions** tab -> "Deploy to GitHub Pages" -> **Run workflow**), 1-2 நிமிடத்தில் இங்கே உங்கள் website கிடைக்கும்:
 
-   **`https://thileeban1.github.io/ilangaithirumanam-/`**
+   **`https://thileeban1.github.io/kadhiravan/`**
 
 Vercel / Netlify / Firebase Hosting விரும்பினால் அவையும் வேலை செய்யும் — build command `npm run build`, output directory `dist`, 6 env vars சேர்த்தால் போதும்.
 
