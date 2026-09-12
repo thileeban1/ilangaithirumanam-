@@ -1,0 +1,99 @@
+.cplms-wrap {
+	max-width: 900px;
+	margin: 0 auto;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.cplms-header {
+	text-align: center;
+	margin-bottom: 24px;
+}
+
+.cplms-header h2 {
+	margin-bottom: 4px;
+}
+
+.cplms-tagline {
+	color: #666;
+}
+
+.cplms-login-form {
+	max-width: 360px;
+	margin: 0 auto;
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	background: #f7f7f8;
+	padding: 24px;
+	border-radius: 12px;
+}
+
+.cplms-login-form input[type="text"] {
+	padding: 10px 12px;
+	border: 1px solid #ccc;
+	border-radius: 8px;
+	font-size: 16px;
+}
+
+.cplms-btn {
+	display: inline-block;
+	padding: 10px 16px;
+	background: #2563eb;
+	color: #fff !important;
+	border: none;
+	border-radius: 8px;
+	cursor: pointer;
+	font-size: 15px;
+	text-decoration: none;
+	text-align: center;
+}
+
+.cplms-btn:hover {
+	background: #1d4ed8;
+}
+
+.cplms-btn-zoom {
+	background: #16a34a;
+}
+
+.cplms-btn-zoom:hover {
+	background: #15803d;
+}
+
+.cplms-error {
+	color: #dc2626;
+	font-size: 14px;
+}
+
+.cplms-welcome {
+	font-size: 18px;
+	margin-bottom: 16px;
+}
+
+.cplms-subjects {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+	gap: 16px;
+}
+
+.cplms-subject-card {
+	border: 1px solid #e5e7eb;
+	border-radius: 12px;
+	padding: 16px;
+	background: #fff;
+}
+
+.cplms-subject-card h3 {
+	margin-top: 0;
+}
+
+.cplms-list ul {
+	margin: 4px 0 12px;
+	padding-left: 18px;
+}
+
+.cplms-logout {
+	display: inline-block;
+	margin-top: 20px;
+	color: #2563eb;
+}
