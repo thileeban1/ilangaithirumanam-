@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Class Portal LMS
  * Description: தரம் / பாடம் / Zoom Link / Recordings / PDF குறிப்புகளை நிர்வகிக்கவும், மாணவர்கள் ஒரு Access Code மூலம் தங்களுக்கான பாடங்களை மட்டும் பார்க்கவும் உதவும் எளிய LMS.
- * Version: 1.0.3
+ * Version: 1.0.4
  * Author: Class Portal
  * Text Domain: class-portal-lms
  */
@@ -11,7 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'CPLMS_VERSION', '1.0.3' );
+define( 'CPLMS_VERSION', '1.0.4' );
 define( 'CPLMS_PATH', plugin_dir_path( __FILE__ ) );
 define( 'CPLMS_URL', plugin_dir_url( __FILE__ ) );
 
@@ -267,10 +267,12 @@ function cplms_settings_page() {
 	if ( isset( $_POST['cplms_settings_nonce'] ) && wp_verify_nonce( $_POST['cplms_settings_nonce'], 'cplms_save_settings' ) && current_user_can( 'manage_options' ) ) {
 		update_option( 'cplms_school_name', sanitize_text_field( wp_unslash( $_POST['cplms_school_name'] ?? '' ) ) );
 		update_option( 'cplms_tagline', sanitize_text_field( wp_unslash( $_POST['cplms_tagline'] ?? '' ) ) );
+		update_option( 'cplms_whatsapp', preg_replace( '/[^0-9]/', '', wp_unslash( $_POST['cplms_whatsapp'] ?? '' ) ) );
 		echo '<div class="updated"><p>சேமிக்கப்பட்டது.</p></div>';
 	}
 	$school_name = get_option( 'cplms_school_name', 'வகுப்பு போர்ட்டல்' );
 	$tagline     = get_option( 'cplms_tagline', '' );
+	$whatsapp    = get_option( 'cplms_whatsapp', '94752495266' );
 	?>
 	<div class="wrap">
 		<h1>Class Portal LMS — அமைப்புகள்</h1>
@@ -285,6 +287,13 @@ function cplms_settings_page() {
 				<tr>
 					<th><label for="cplms_tagline">Tagline</label></th>
 					<td><input type="text" id="cplms_tagline" name="cplms_tagline" value="<?php echo esc_attr( $tagline ); ?>" class="regular-text"></td>
+				</tr>
+				<tr>
+					<th><label for="cplms_whatsapp">WhatsApp Number (country code-உடன், + இல்லாமல்)</label></th>
+					<td>
+						<input type="text" id="cplms_whatsapp" name="cplms_whatsapp" value="<?php echo esc_attr( $whatsapp ); ?>" class="regular-text" placeholder="94752495266">
+						<p class="description">இதை நிரப்பினால், website-ன் எல்லா pages-லும் கீழே வலது பக்கத்தில் ஒரு WhatsApp button தெரியும்.</p>
+					</td>
 				</tr>
 			</table>
 			<?php submit_button( 'சேமிக்க' ); ?>
@@ -340,6 +349,25 @@ function cplms_hide_wp_credit() {
 	<?php
 }
 add_action( 'wp_footer', 'cplms_hide_wp_credit', 100 );
+
+/**
+ * Floating WhatsApp button shown on every front-end page (bottom-right),
+ * so students/parents can reach the teacher directly with one tap.
+ */
+function cplms_print_whatsapp_button() {
+	$whatsapp = get_option( 'cplms_whatsapp', '94752495266' );
+	if ( empty( $whatsapp ) ) {
+		return;
+	}
+	?>
+	<a href="https://wa.me/<?php echo esc_attr( $whatsapp ); ?>" target="_blank" rel="noopener" class="cplms-whatsapp-float" aria-label="WhatsApp-ல் தொடர்பு கொள்ள">
+		<svg viewBox="0 0 32 32" width="30" height="30" fill="#fff" aria-hidden="true">
+			<path d="M16 3C9.373 3 4 8.373 4 15c0 2.386.706 4.607 1.92 6.463L4 29l7.72-1.876A11.93 11.93 0 0 0 16 27c6.627 0 12-5.373 12-12S22.627 3 16 3zm0 21.8a9.76 9.76 0 0 1-4.98-1.36l-.357-.213-3.66.89.89-3.567-.232-.368A9.76 9.76 0 0 1 6.2 15c0-5.404 4.396-9.8 9.8-9.8s9.8 4.396 9.8 9.8-4.396 9.8-9.8 9.8zm5.36-7.34c-.293-.147-1.735-.856-2.004-.954-.269-.098-.464-.147-.66.147-.196.293-.758.954-.929 1.15-.171.196-.342.22-.635.073-.293-.147-1.238-.456-2.358-1.454-.872-.778-1.46-1.739-1.631-2.032-.171-.293-.018-.451.129-.598.132-.132.293-.342.44-.513.147-.171.196-.293.293-.489.098-.196.049-.367-.024-.514-.073-.147-.66-1.591-.904-2.179-.238-.572-.48-.494-.66-.503l-.562-.01c-.196 0-.514.073-.783.367-.269.293-1.026 1.003-1.026 2.447 0 1.444 1.05 2.838 1.197 3.034.147.196 2.067 3.157 5.008 4.427.7.302 1.246.483 1.672.618.703.223 1.343.192 1.849.117.564-.084 1.735-.71 1.98-1.395.244-.685.244-1.272.171-1.395-.073-.122-.269-.196-.562-.343z"/>
+		</svg>
+	</a>
+	<?php
+}
+add_action( 'wp_footer', 'cplms_print_whatsapp_button', 100 );
 
 function cplms_parse_lines( $raw ) {
 	$items = array();
@@ -460,6 +488,7 @@ add_shortcode( 'class_portal', 'cplms_shortcode' );
 function cplms_activate() {
 	cplms_register_post_types();
 	flush_rewrite_rules();
+	add_option( 'cplms_whatsapp', '94752495266' );
 
 	if ( ! get_page_by_path( 'class-portal' ) ) {
 		wp_insert_post( array(
