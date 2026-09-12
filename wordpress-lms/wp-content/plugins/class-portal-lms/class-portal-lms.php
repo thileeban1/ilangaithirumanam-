@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Class Portal LMS
  * Description: தரம் / பாடம் / Zoom Link / Recordings / PDF குறிப்புகளை நிர்வகிக்கவும், மாணவர்கள் ஒரு Access Code மூலம் தங்களுக்கான பாடங்களை மட்டும் பார்க்கவும் உதவும் எளிய LMS.
- * Version: 1.0.2
+ * Version: 1.0.3
  * Author: Class Portal
  * Text Domain: class-portal-lms
  */
@@ -11,7 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'CPLMS_VERSION', '1.0.2' );
+define( 'CPLMS_VERSION', '1.0.3' );
 define( 'CPLMS_PATH', plugin_dir_path( __FILE__ ) );
 define( 'CPLMS_URL', plugin_dir_url( __FILE__ ) );
 
@@ -122,14 +122,55 @@ function cplms_subject_meta_box( $post ) {
 	</p>
 	<p>
 		<label><strong>Recordings</strong> (ஒரு வரிக்கு ஒன்று: <code>தலைப்பு | URL</code>)</label><br>
-		<textarea name="cp_recordings" rows="4" style="width:100%" placeholder="வகுப்பு 1 | https://..."><?php echo esc_textarea( $recordings ); ?></textarea>
+		<textarea id="cp_recordings" name="cp_recordings" rows="4" style="width:100%" placeholder="வகுப்பு 1 | https://..."><?php echo esc_textarea( $recordings ); ?></textarea><br>
+		<button type="button" class="button cplms-upload-btn" data-target="cp_recordings" data-filetype="video">📎 Recording கோப்பு பதிவேற்ற (Upload)</button>
 	</p>
 	<p>
 		<label><strong>PDF குறிப்புகள்</strong> (ஒரு வரிக்கு ஒன்று: <code>தலைப்பு | URL</code>)</label><br>
-		<textarea name="cp_pdfs" rows="4" style="width:100%" placeholder="Notes Chapter 1 | https://..."><?php echo esc_textarea( $pdfs ); ?></textarea>
+		<textarea id="cp_pdfs" name="cp_pdfs" rows="4" style="width:100%" placeholder="Notes Chapter 1 | https://..."><?php echo esc_textarea( $pdfs ); ?></textarea><br>
+		<button type="button" class="button cplms-upload-btn" data-target="cp_pdfs" data-filetype="application/pdf">📎 PDF கோப்பு பதிவேற்ற (Upload)</button>
 	</p>
 	<?php
 }
+
+/**
+ * Load the WordPress Media Uploader on the Subject edit screen and wire up
+ * the "Upload" buttons so teachers can pick/upload a file instead of having
+ * to know or paste a URL themselves.
+ */
+function cplms_admin_enqueue_media( $hook ) {
+	global $post;
+	if ( ! in_array( $hook, array( 'post.php', 'post-new.php' ), true ) || ! $post || 'cp_subject' !== $post->post_type ) {
+		return;
+	}
+	wp_enqueue_media();
+	$inline_js = <<<'JS'
+	jQuery(function ($) {
+		$('.cplms-upload-btn').on('click', function (e) {
+			e.preventDefault();
+			var button = $(this);
+			var targetId = button.data('target');
+			var fileType = button.data('filetype');
+			var frame = wp.media({
+				title: 'கோப்பு தேர்ந்தெடுக்கவும் / பதிவேற்றவும்',
+				button: { text: 'இதை பயன்படுத்த' },
+				library: fileType === 'application/pdf' ? { type: 'application/pdf' } : {},
+				multiple: false
+			});
+			frame.on('select', function () {
+				var attachment = frame.state().get('selection').first().toJSON();
+				var line = (attachment.title || attachment.filename) + ' | ' + attachment.url;
+				var textarea = $('#' + targetId);
+				var current = textarea.val();
+				textarea.val(current && current.trim() !== '' ? current.replace(/\n$/, '') + '\n' + line : line);
+			});
+			frame.open();
+		});
+	});
+JS;
+	wp_add_inline_script( 'media-editor', $inline_js );
+}
+add_action( 'admin_enqueue_scripts', 'cplms_admin_enqueue_media' );
 
 function cplms_student_meta_box( $post ) {
 	wp_nonce_field( 'cplms_save_student', 'cplms_student_nonce' );
