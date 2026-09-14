@@ -1,5 +1,16 @@
-import React, { useState, useEffect, useRef } from "react";
-import { doc, onSnapshot, setDoc } from "firebase/firestore";
+import React, { useState, useEffect, useMemo } from "react";
+import {
+  collection,
+  doc,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  setDoc,
+  onSnapshot,
+  query,
+  where,
+  serverTimestamp,
+} from "firebase/firestore";
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
@@ -19,78 +30,105 @@ const AUTH_ERROR_MESSAGES = {
 const authErrorMessage = (e) => AUTH_ERROR_MESSAGES[e?.code] || "உள்நுழைய முடியவில்லை. மீண்டும் முயற்சிக்கவும்.";
 
 // ---------- helpers ----------
-const genCode = () => {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let s = "";
-  for (let i = 0; i < 6; i++) s += chars[Math.floor(Math.random() * chars.length)];
-  return s;
-};
-const genId = () => Math.random().toString(36).slice(2, 10);
 const todayStr = () => new Date().toISOString().slice(0, 10);
-const fmtDate = (d) => {
-  if (!d) return "";
+
+const calcAge = (dob) => {
+  if (!dob) return null;
+  const b = new Date(dob + "T00:00:00");
+  if (Number.isNaN(b.getTime())) return null;
+  const now = new Date();
+  let age = now.getFullYear() - b.getFullYear();
+  const m = now.getMonth() - b.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < b.getDate())) age--;
+  return age;
+};
+
+const fmtDate = (ts) => {
+  if (!ts) return "";
   try {
-    const dt = new Date(d + "T00:00:00");
-    return dt.toLocaleDateString("ta-LK", { day: "2-digit", month: "short", year: "numeric" });
+    const d = ts.toDate ? ts.toDate() : new Date(ts);
+    return d.toLocaleDateString("ta-LK", { day: "2-digit", month: "short", year: "numeric" });
   } catch (e) {
-    return d;
+    return "";
   }
 };
 
-const DEFAULT_SETTINGS = {
-  schoolName: "கதிரவன் கல்வி நிறுவனம்",
-  tagline: "உங்கள் நம்பகமான கற்றல் பங்காளி",
+const sortByCreatedDesc = (list) =>
+  [...list].sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+
+const GENDERS = ["ஆண்", "பெண்"];
+const MARITAL_STATUSES = ["திருமணமாகாதவர்", "விவாகரத்து பெற்றவர்", "விதவை / விதவன்"];
+const RELIGIONS = ["இந்து", "கிறிஸ்தவர்", "இஸ்லாம்", "பிற"];
+
+const EMPTY_PROFILE = {
+  name: "",
+  gender: "",
+  dob: "",
+  height: "",
+  religion: "",
+  caste: "",
+  motherTongue: "தமிழ்",
+  country: "இலங்கை",
+  district: "",
+  maritalStatus: "",
+  education: "",
+  profession: "",
+  about: "",
+  phone: "",
+  email: "",
+  photoUrl: "",
 };
 
-const APP_COLLECTION = "app";
+const EMPTY_INTEREST = { requesterName: "", requesterPhone: "", message: "" };
 
-export default function LMS() {
-  const [screen, setScreen] = useState("home"); // home | teacherLogin | teacher | studentLogin | student
+const DEFAULT_SETTINGS = {
+  siteName: "இலங்கை தமிழர் திருமண மையம்",
+  tagline: "நம்பிக்கையுடன் ஒரு புதிய தொடக்கம்",
+};
+
+const PROFILES_COLLECTION = "profiles";
+const INTERESTS_COLLECTION = "interests";
+const SETTINGS_DOC = "site";
+
+export default function MatrimonyApp() {
+  const [screen, setScreen] = useState("home"); // home | register | browse | profile | adminLogin | admin
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [savedFlash, setSavedFlash] = useState("");
 
-  const [grades, setGrades] = useState([]); // [{id, name}]
-  const [subjects, setSubjects] = useState([]); // [{id, gradeId, name, zoomLink, recordings:[{id,date,title,url}], pdfs:[{id,title,url}]}]
-  const [students, setStudents] = useState([]); // [{id,name,code,subjectIds:[]}]
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
+  const [approvedProfiles, setApprovedProfiles] = useState([]);
+  const [selectedProfileId, setSelectedProfileId] = useState(null);
 
-  const [passInput, setPassInput] = useState("");
-  const [codeInput, setCodeInput] = useState("");
-  const [activeStudent, setActiveStudent] = useState(null);
+  // register form
+  const [registerForm, setRegisterForm] = useState(EMPTY_PROFILE);
+  const [registerBusy, setRegisterBusy] = useState(false);
+  const [registerDone, setRegisterDone] = useState(false);
 
-  // teacher: auth
-  const [teacherUser, setTeacherUser] = useState(null);
+  // browse filters
+  const [filters, setFilters] = useState({ gender: "", district: "", maritalStatus: "", minAge: "", maxAge: "" });
+
+  // interest form (on profile detail)
+  const [interestForm, setInterestForm] = useState(EMPTY_INTEREST);
+  const [interestBusy, setInterestBusy] = useState(false);
+  const [interestDone, setInterestDone] = useState(false);
+
+  // admin: auth
+  const [adminUser, setAdminUser] = useState(null);
   const [authReady, setAuthReady] = useState(false);
-  const [teacherEmail, setTeacherEmail] = useState("");
+  const [adminEmail, setAdminEmail] = useState("");
+  const [passInput, setPassInput] = useState("");
   const [authBusy, setAuthBusy] = useState(false);
   const [resetSent, setResetSent] = useState(false);
 
-  // teacher: brand
+  // admin: data
+  const [allProfiles, setAllProfiles] = useState([]);
+  const [interests, setInterests] = useState([]);
+  const [adminTab, setAdminTab] = useState("pending"); // pending | approved | rejected | interests | settings
+  const [editingProfileId, setEditingProfileId] = useState(null);
+  const [editDraft, setEditDraft] = useState(EMPTY_PROFILE);
   const [nameDraft, setNameDraft] = useState("");
   const [taglineDraft, setTaglineDraft] = useState("");
-
-  // teacher: grade/subject nav
-  const [expandedGradeId, setExpandedGradeId] = useState(null);
-  const [expandedSubjectId, setExpandedSubjectId] = useState(null);
-  const [newGradeName, setNewGradeName] = useState("");
-  const [newSubjectName, setNewSubjectName] = useState("");
-  const [newSubjectZoom, setNewSubjectZoom] = useState("");
-  const [zoomEditDraft, setZoomEditDraft] = useState({}); // subjectId -> draft value
-  const [recDate, setRecDate] = useState(todayStr());
-  const [recTitle, setRecTitle] = useState("");
-  const [recUrl, setRecUrl] = useState("");
-  const [subPdfTitle, setSubPdfTitle] = useState("");
-  const [subPdfUrl, setSubPdfUrl] = useState("");
-
-  // teacher: students
-  const [newStudentName, setNewStudentName] = useState("");
-  const [newStudentCode, setNewStudentCode] = useState(genCode());
-  const [expandedStudentId, setExpandedStudentId] = useState(null);
-  const [studentSearch, setStudentSearch] = useState("");
-  const [showCodeList, setShowCodeList] = useState(false);
-
-  const settingsInitRef = useRef(false);
 
   useEffect(() => {
     if (!firebaseConfigured || !auth) {
@@ -98,7 +136,7 @@ export default function LMS() {
       return;
     }
     const unsub = onAuthStateChanged(auth, (user) => {
-      setTeacherUser(user);
+      setAdminUser(user);
       setAuthReady(true);
     });
     return unsub;
@@ -109,81 +147,141 @@ export default function LMS() {
       setLoading(false);
       return;
     }
-
-    const watchList = (id, setter) =>
-      onSnapshot(
-        doc(db, APP_COLLECTION, id),
-        (snap) => {
-          const data = snap.exists() ? snap.data() : null;
-          setter(data && Array.isArray(data.list) ? data.list : []);
-        },
-        () => setError("தரவு ஏற்றுவதில் சிக்கல் ஏற்பட்டது.")
-      );
-
-    const unsubGrades = watchList("grades", setGrades);
-    const unsubSubjects = watchList("subjects", setSubjects);
-    const unsubStudents = watchList("students", setStudents);
+    let settingsLoaded = false;
+    let profilesLoaded = false;
+    const maybeDone = () => settingsLoaded && profilesLoaded && setLoading(false);
 
     const unsubSettings = onSnapshot(
-      doc(db, APP_COLLECTION, "settings"),
+      doc(db, "settings", SETTINGS_DOC),
       (snap) => {
         const merged = { ...DEFAULT_SETTINGS, ...(snap.exists() ? snap.data() : {}) };
         setSettings(merged);
-        if (!settingsInitRef.current) {
-          settingsInitRef.current = true;
-          setNameDraft(merged.schoolName || "");
-          setTaglineDraft(merged.tagline || "");
-        }
-        setLoading(false);
+        setNameDraft((v) => v || merged.siteName || "");
+        setTaglineDraft((v) => v || merged.tagline || "");
+        settingsLoaded = true;
+        maybeDone();
+      },
+      () => {
+        settingsLoaded = true;
+        maybeDone();
+      }
+    );
+
+    const unsubProfiles = onSnapshot(
+      query(collection(db, PROFILES_COLLECTION), where("status", "==", "approved")),
+      (snap) => {
+        setApprovedProfiles(sortByCreatedDesc(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
+        profilesLoaded = true;
+        maybeDone();
       },
       () => {
         setError("தரவு ஏற்றுவதில் சிக்கல் ஏற்பட்டது.");
-        setLoading(false);
+        profilesLoaded = true;
+        maybeDone();
       }
     );
 
     return () => {
-      unsubGrades();
-      unsubSubjects();
-      unsubStudents();
       unsubSettings();
+      unsubProfiles();
     };
   }, []);
 
+  useEffect(() => {
+    if (!adminUser || !db) {
+      setAllProfiles([]);
+      setInterests([]);
+      return;
+    }
+    const unsubAll = onSnapshot(collection(db, PROFILES_COLLECTION), (snap) => {
+      setAllProfiles(sortByCreatedDesc(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
+    });
+    const unsubInterests = onSnapshot(collection(db, INTERESTS_COLLECTION), (snap) => {
+      setInterests(sortByCreatedDesc(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
+    });
+    return () => {
+      unsubAll();
+      unsubInterests();
+    };
+  }, [adminUser]);
+
+  useEffect(() => {
+    setInterestForm(EMPTY_INTEREST);
+    setInterestDone(false);
+  }, [selectedProfileId]);
+
   const flash = (msg) => {
     setSavedFlash(msg);
-    setTimeout(() => setSavedFlash(""), 1600);
+    setTimeout(() => setSavedFlash(""), 1800);
   };
 
-  const persist = async (key, value, setter) => {
-    setter(value);
-    if (!db) return;
+  const goHome = () => {
+    setError("");
+    setScreen("home");
+  };
+
+  // ---------- public: register ----------
+  const handleRegisterSubmit = async () => {
+    const f = registerForm;
+    if (!f.name.trim() || !f.gender || !f.dob || !f.phone.trim()) {
+      return setError("பெயர், பாலினம், பிறந்த தேதி, தொடர்பு எண் ஆகியவற்றை நிரப்பவும்.");
+    }
+    setError("");
+    setRegisterBusy(true);
     try {
-      const body = Array.isArray(value) ? { list: value } : value;
-      await setDoc(doc(db, APP_COLLECTION, key), body);
+      await addDoc(collection(db, PROFILES_COLLECTION), {
+        ...f,
+        name: f.name.trim(),
+        phone: f.phone.trim(),
+        status: "pending",
+        createdAt: serverTimestamp(),
+      });
+      setRegisterDone(true);
+      setRegisterForm(EMPTY_PROFILE);
     } catch (e) {
       setError("சேமிக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்.");
+    } finally {
+      setRegisterBusy(false);
     }
   };
-  const saveGrades = (v) => persist("grades", v, setGrades);
-  const saveSubjects = (v) => persist("subjects", v, setSubjects);
-  const saveStudents = (v) => persist("students", v, setStudents);
-  const saveSettings = (v) => persist("settings", v, setSettings);
 
-  // ---------- teacher: auth ----------
-  const goTeacher = () => {
+  // ---------- public: express interest ----------
+  const handleInterestSubmit = async () => {
+    if (!interestForm.requesterName.trim() || !interestForm.requesterPhone.trim()) {
+      return setError("உங்கள் பெயர் மற்றும் தொடர்பு எண்ணை நிரப்பவும்.");
+    }
     setError("");
-    setScreen(teacherUser ? "teacher" : "teacherLogin");
+    setInterestBusy(true);
+    try {
+      await addDoc(collection(db, INTERESTS_COLLECTION), {
+        profileId: selectedProfileId,
+        requesterName: interestForm.requesterName.trim(),
+        requesterPhone: interestForm.requesterPhone.trim(),
+        message: interestForm.message.trim(),
+        createdAt: serverTimestamp(),
+      });
+      setInterestDone(true);
+    } catch (e) {
+      setError("அனுப்ப முடியவில்லை. மீண்டும் முயற்சிக்கவும்.");
+    } finally {
+      setInterestBusy(false);
+    }
   };
 
-  const handleTeacherSignIn = async () => {
-    if (!teacherEmail.trim() || !passInput.trim()) return setError("மின்னஞ்சல் மற்றும் கடவுச்சொல்லை உள்ளிடவும்.");
+  // ---------- admin: auth ----------
+  const goAdmin = () => {
+    setError("");
+    setScreen(adminUser ? "admin" : "adminLogin");
+  };
+
+  const handleAdminSignIn = async () => {
+    if (!adminEmail.trim() || !passInput.trim()) return setError("மின்னஞ்சல் மற்றும் கடவுச்சொல்லை உள்ளிடவும்.");
     setAuthBusy(true);
     setError("");
     try {
-      await signInWithEmailAndPassword(auth, teacherEmail.trim(), passInput);
+      await signInWithEmailAndPassword(auth, adminEmail.trim(), passInput);
       setPassInput("");
-      setScreen("teacher");
+      setScreen("admin");
     } catch (e) {
       setError(authErrorMessage(e));
     } finally {
@@ -192,11 +290,11 @@ export default function LMS() {
   };
 
   const handleForgotPassword = async () => {
-    if (!teacherEmail.trim()) return setError("முதலில் மின்னஞ்சலை உள்ளிடவும்.");
+    if (!adminEmail.trim()) return setError("முதலில் மின்னஞ்சலை உள்ளிடவும்.");
     setAuthBusy(true);
     setError("");
     try {
-      await sendPasswordResetEmail(auth, teacherEmail.trim());
+      await sendPasswordResetEmail(auth, adminEmail.trim());
       setResetSent(true);
     } catch (e) {
       setError(authErrorMessage(e));
@@ -205,194 +303,154 @@ export default function LMS() {
     }
   };
 
-  const handleTeacherLogout = () => {
+  const handleAdminLogout = () => {
     signOut(auth).catch(() => {});
   };
 
-  const saveBrand = () => {
-    saveSettings({ ...settings, schoolName: nameDraft.trim() || DEFAULT_SETTINGS.schoolName, tagline: taglineDraft.trim() });
-    flash("பள்ளி விவரம் சேமிக்கப்பட்டது");
-  };
-
-  // ---------- teacher: grades ----------
-  const addGrade = () => {
-    if (!newGradeName.trim()) return setError("தர பெயரை உள்ளிடவும்.");
-    saveGrades([...grades, { id: genId(), name: newGradeName.trim() }]);
-    setNewGradeName("");
-    setError("");
-    flash("தரம் சேர்க்கப்பட்டது");
-  };
-
-  const removeGrade = (gradeId) => {
-    const subIds = subjects.filter((s) => s.gradeId === gradeId).map((s) => s.id);
-    saveSubjects(subjects.filter((s) => s.gradeId !== gradeId));
-    saveStudents(students.map((st) => ({ ...st, subjectIds: st.subjectIds.filter((id) => !subIds.includes(id)) })));
-    saveGrades(grades.filter((g) => g.id !== gradeId));
-    if (expandedGradeId === gradeId) setExpandedGradeId(null);
-  };
-
-  // ---------- teacher: subjects ----------
-  const addSubject = (gradeId) => {
-    if (!newSubjectName.trim()) return setError("பாட பெயரை உள்ளிடவும்.");
-    const sub = {
-      id: genId(),
-      gradeId,
-      name: newSubjectName.trim(),
-      zoomLink: newSubjectZoom.trim(),
-      recordings: [],
-      pdfs: [],
-    };
-    saveSubjects([...subjects, sub]);
-    setNewSubjectName("");
-    setNewSubjectZoom("");
-    setError("");
-    flash("பாடம் சேர்க்கப்பட்டது");
-  };
-
-  const removeSubject = (subjectId) => {
-    saveSubjects(subjects.filter((s) => s.id !== subjectId));
-    saveStudents(students.map((st) => ({ ...st, subjectIds: st.subjectIds.filter((id) => id !== subjectId) })));
-    if (expandedSubjectId === subjectId) setExpandedSubjectId(null);
-  };
-
-  const updateSubjectZoom = (subjectId) => {
-    const val = (zoomEditDraft[subjectId] ?? "").trim();
-    saveSubjects(subjects.map((s) => (s.id === subjectId ? { ...s, zoomLink: val } : s)));
-    flash("Zoom Link சேமிக்கப்பட்டது");
-  };
-
-  const addRecording = (subjectId) => {
-    if (!recTitle.trim() || !recUrl.trim()) return setError("Recording தலைப்பும் Link-உம் தேவை.");
-    saveSubjects(
-      subjects.map((s) =>
-        s.id === subjectId
-          ? { ...s, recordings: [...s.recordings, { id: genId(), date: recDate, title: recTitle.trim(), url: recUrl.trim() }] }
-          : s
-      )
-    );
-    setRecTitle("");
-    setRecUrl("");
-    setError("");
-    flash("Recording சேர்க்கப்பட்டது");
-  };
-
-  const removeRecording = (subjectId, recId) => {
-    saveSubjects(
-      subjects.map((s) => (s.id === subjectId ? { ...s, recordings: s.recordings.filter((r) => r.id !== recId) } : s))
-    );
-  };
-
-  const addSubjectPdf = (subjectId) => {
-    if (!subPdfTitle.trim() || !subPdfUrl.trim()) return setError("PDF தலைப்பும் Link-உம் தேவை.");
-    saveSubjects(
-      subjects.map((s) =>
-        s.id === subjectId ? { ...s, pdfs: [...s.pdfs, { id: genId(), title: subPdfTitle.trim(), url: subPdfUrl.trim() }] } : s
-      )
-    );
-    setSubPdfTitle("");
-    setSubPdfUrl("");
-    setError("");
-    flash("PDF சேர்க்கப்பட்டது");
-  };
-
-  const removeSubjectPdf = (subjectId, pdfId) => {
-    saveSubjects(subjects.map((s) => (s.id === subjectId ? { ...s, pdfs: s.pdfs.filter((p) => p.id !== pdfId) } : s)));
-  };
-
-  // ---------- teacher: students ----------
-  const addStudent = () => {
-    if (!newStudentName.trim()) return setError("மாணவர் பெயரை உள்ளிடவும்.");
-    const code = newStudentCode.trim().toUpperCase() || genCode();
-    if (students.some((s) => s.code === code)) return setError("இந்த Access Code ஏற்கனவே உள்ளது.");
-    saveStudents([...students, { id: genId(), name: newStudentName.trim(), code, subjectIds: [] }]);
-    setNewStudentName("");
-    setNewStudentCode(genCode());
-    setError("");
-    flash("மாணவர் சேர்க்கப்பட்டார்");
-  };
-
-  const removeStudent = (id) => saveStudents(students.filter((s) => s.id !== id));
-
-  const copyCodeList = async () => {
-    const text = students.map((s) => `${s.name} — ${s.code}`).join("\n");
+  // ---------- admin: profiles ----------
+  const approveProfile = async (id) => {
     try {
-      await navigator.clipboard.writeText(text);
-      flash("பட்டியல் Copy ஆனது");
+      await updateDoc(doc(db, PROFILES_COLLECTION, id), { status: "approved" });
+      flash("சுயவிவரம் ஏற்றுக்கொள்ளப்பட்டது");
     } catch (e) {
-      flash("Copy தானாக ஆகவில்லை — கீழே இருந்து manual-ஆ Select பண்ணவும்");
+      setError("செயல்படுத்த முடியவில்லை.");
+    }
+  };
+  const rejectProfile = async (id) => {
+    try {
+      await updateDoc(doc(db, PROFILES_COLLECTION, id), { status: "rejected" });
+      flash("சுயவிவரம் நிராகரிக்கப்பட்டது");
+    } catch (e) {
+      setError("செயல்படுத்த முடியவில்லை.");
+    }
+  };
+  const reconsiderProfile = async (id) => {
+    try {
+      await updateDoc(doc(db, PROFILES_COLLECTION, id), { status: "pending" });
+      flash("மீண்டும் பரிசீலனைக்கு அனுப்பப்பட்டது");
+    } catch (e) {
+      setError("செயல்படுத்த முடியவில்லை.");
+    }
+  };
+  const deleteProfile = async (id) => {
+    try {
+      await deleteDoc(doc(db, PROFILES_COLLECTION, id));
+      if (editingProfileId === id) setEditingProfileId(null);
+      flash("நீக்கப்பட்டது");
+    } catch (e) {
+      setError("நீக்க முடியவில்லை.");
+    }
+  };
+  const startEditProfile = (p) => {
+    setEditingProfileId(p.id);
+    setEditDraft({ ...EMPTY_PROFILE, ...p });
+  };
+  const saveEditProfile = async () => {
+    if (!editDraft.name.trim() || !editDraft.gender || !editDraft.phone.trim()) {
+      return setError("பெயர், பாலினம், தொடர்பு எண் ஆகியவற்றை நிரப்பவும்.");
+    }
+    try {
+      const { id, status, createdAt, ...rest } = editDraft;
+      await updateDoc(doc(db, PROFILES_COLLECTION, editingProfileId), rest);
+      setEditingProfileId(null);
+      flash("மாற்றங்கள் சேமிக்கப்பட்டன");
+    } catch (e) {
+      setError("சேமிக்க முடியவில்லை.");
+    }
+  };
+  const deleteInterest = async (id) => {
+    try {
+      await deleteDoc(doc(db, INTERESTS_COLLECTION, id));
+    } catch (e) {
+      setError("நீக்க முடியவில்லை.");
+    }
+  };
+  const saveSiteSettings = async () => {
+    try {
+      await setDoc(
+        doc(db, "settings", SETTINGS_DOC),
+        { siteName: nameDraft.trim() || DEFAULT_SETTINGS.siteName, tagline: taglineDraft.trim() },
+        { merge: true }
+      );
+      flash("அமைப்புகள் சேமிக்கப்பட்டன");
+    } catch (e) {
+      setError("சேமிக்க முடியவில்லை.");
     }
   };
 
-  const toggleSubjectForStudent = (studentId, subjectId) => {
-    saveStudents(
-      students.map((st) => {
-        if (st.id !== studentId) return st;
-        const has = st.subjectIds.includes(subjectId);
-        return { ...st, subjectIds: has ? st.subjectIds.filter((id) => id !== subjectId) : [...st.subjectIds, subjectId] };
-      })
-    );
-  };
+  const filteredProfiles = useMemo(() => {
+    return approvedProfiles.filter((p) => {
+      if (filters.gender && p.gender !== filters.gender) return false;
+      if (filters.maritalStatus && p.maritalStatus !== filters.maritalStatus) return false;
+      if (filters.district && !(p.district || "").toLowerCase().includes(filters.district.trim().toLowerCase())) return false;
+      const age = calcAge(p.dob);
+      if (filters.minAge && (age === null || age < Number(filters.minAge))) return false;
+      if (filters.maxAge && (age === null || age > Number(filters.maxAge))) return false;
+      return true;
+    });
+  }, [approvedProfiles, filters]);
 
-  // ---------- student login ----------
-  const handleStudentLogin = () => {
-    const found = students.find((s) => s.code === codeInput.trim().toUpperCase());
-    if (!found) return setError("Access Code தவறு. மீண்டும் சரிபார்க்கவும்.");
-    setActiveStudent(found);
-    setScreen("student");
-    setError("");
-  };
-
-  useEffect(() => {
-    if (activeStudent) {
-      const fresh = students.find((s) => s.id === activeStudent.id);
-      if (fresh) setActiveStudent(fresh);
-    }
-    // eslint-disable-next-line
-  }, [students]);
-
-  const mySubjects = activeStudent
-    ? subjects.filter((s) => activeStudent.subjectIds.includes(s.id))
-    : [];
-  const myGradeIds = [...new Set(mySubjects.map((s) => s.gradeId))];
+  const pendingProfiles = useMemo(() => allProfiles.filter((p) => p.status === "pending"), [allProfiles]);
+  const approvedAdminProfiles = useMemo(() => allProfiles.filter((p) => p.status === "approved"), [allProfiles]);
+  const rejectedProfiles = useMemo(() => allProfiles.filter((p) => p.status === "rejected"), [allProfiles]);
+  const selectedProfile = approvedProfiles.find((p) => p.id === selectedProfileId) || null;
 
   // ---------- styles ----------
   const styles = {
     page: { minHeight: "100vh", background: "#0B0F16", fontFamily: "'Inter','Noto Sans Tamil',sans-serif", color: "#EAF0FA", paddingBottom: 50, boxSizing: "border-box" },
-    header: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 18px", borderBottom: "1px solid #1B2436", position: "sticky", top: 0, background: "#0B0F16", zIndex: 5 },
+    header: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 18px", borderBottom: "1px solid #1B2436", position: "sticky", top: 0, background: "#0B0F16", zIndex: 5, gap: 10 },
     brandBox: { background: "#F4F1EA", color: "#0B0F16", borderRadius: 8, padding: "8px 14px", fontFamily: "'Fraunces',serif", fontWeight: 700, fontSize: 14, maxWidth: 190, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
-    pill: { border: "1.5px solid #3A4A6B", color: "#AEBEDD", borderRadius: 999, padding: "7px 16px", fontSize: 12.5, fontFamily: "'IBM Plex Mono',monospace" },
-    bell: { width: 36, height: 36, borderRadius: "50%", background: "#161F30", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 },
-    banner: { margin: "18px 18px 0", borderRadius: 16, padding: "26px 22px", background: "linear-gradient(135deg,#123064 0%,#0B1E42 60%,#091530 100%)", border: "1px solid #1E3B72" },
+    pill: { border: "1.5px solid #3A4A6B", color: "#AEBEDD", borderRadius: 999, padding: "7px 16px", fontSize: 12.5, fontFamily: "'IBM Plex Mono',monospace", whiteSpace: "nowrap" },
+    banner: { margin: "18px 18px 0", borderRadius: 16, padding: "26px 22px", background: "linear-gradient(135deg,#5C1E3A 0%,#3A1030 60%,#1F0A22 100%)", border: "1px solid #6E2B4E" },
     eyebrow: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 11.5, letterSpacing: "0.16em", color: "#F2A93B", textTransform: "uppercase", marginBottom: 8 },
     h1: { fontFamily: "'Fraunces',serif", fontWeight: 600, fontSize: 25, lineHeight: 1.25, margin: "0 0 8px", color: "#F6F8FC", textWrap: "balance" },
     h2: { fontFamily: "'Fraunces',serif", fontWeight: 600, fontSize: 18, margin: "0 0 4px", color: "#F6F8FC" },
-    sub: { color: "#9FB0CE", fontSize: 14, lineHeight: 1.55, margin: 0 },
+    sub: { color: "#D9B8CC", fontSize: 14, lineHeight: 1.55, margin: 0 },
     section: { padding: "22px 18px 0" },
     sectionTitle: { fontFamily: "'Fraunces',serif", fontSize: 19, fontWeight: 600, margin: "0 0 14px", color: "#F6F8FC" },
-    grid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 },
-    tile: { borderRadius: 16, overflow: "hidden", border: "1px solid #1E3B72", background: "linear-gradient(160deg,#16305E 0%,#0B1B3B 100%)", display: "flex", flexDirection: "column", minHeight: 100 },
-    tileTop: { flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px 12px", textAlign: "center" },
-    tileTitle: { fontFamily: "'Fraunces',serif", fontWeight: 700, fontSize: 16, lineHeight: 1.2, color: "#F6F8FC", wordBreak: "break-word" },
-    tileBtn: { background: "#123064", color: "#EAF0FA", textAlign: "center", padding: "11px 12px", fontSize: 13, fontWeight: 700, border: "none", borderTop: "1px solid #1E3B72", cursor: "pointer", fontFamily: "inherit", textDecoration: "none", display: "block" },
+    roleCard: { display: "flex", alignItems: "center", gap: 14, width: "100%", textAlign: "left", padding: "18px", borderRadius: 16, border: "1px solid #6E2B4E", background: "linear-gradient(160deg,#5C1E3A 0%,#2A0E24 100%)", color: "#F6F8FC", marginBottom: 14, cursor: "pointer", fontSize: 16.5, fontFamily: "'Fraunces',serif" },
     card: { background: "#111A2C", border: "1px solid #1E2A44", borderRadius: 16, padding: "20px", margin: "0 18px 16px" },
-    subCard: { background: "#0B1220", border: "1px solid #1E2A44", borderRadius: 12, padding: "16px", marginBottom: 12 },
     label: { fontSize: 13, color: "#8FA0C2", display: "block", marginBottom: 8, fontWeight: 600 },
     input: { width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 10, border: "1.5px solid #263354", background: "#0B1220", color: "#EAF0FA", fontSize: 14.5, marginBottom: 12, fontFamily: "inherit" },
-    btnPrimary: { width: "100%", padding: "13px 16px", borderRadius: 999, border: "none", background: "#2E6CF3", color: "#fff", fontSize: 14.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" },
-    btnGhost: { width: "100%", padding: "12px 16px", borderRadius: 999, border: "1.5px solid #2E6CF3", background: "transparent", color: "#8FB0FF", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" },
-    roleCard: { display: "flex", alignItems: "center", gap: 14, width: "100%", textAlign: "left", padding: "18px", borderRadius: 16, border: "1px solid #1E3B72", background: "linear-gradient(160deg,#16305E 0%,#0B1B3B 100%)", color: "#F6F8FC", marginBottom: 14, cursor: "pointer", fontSize: 16.5, fontFamily: "'Fraunces',serif" },
-    ticket: { display: "inline-flex", fontFamily: "'IBM Plex Mono',monospace", fontSize: 13.5, letterSpacing: "0.08em", background: "#0B1220", color: "#F2A93B", padding: "5px 11px", borderRadius: 6, border: "1.5px dashed #F2A93B77", marginTop: 4 },
+    textarea: { width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 10, border: "1.5px solid #263354", background: "#0B1220", color: "#EAF0FA", fontSize: 14.5, marginBottom: 12, fontFamily: "inherit", minHeight: 90, resize: "vertical" },
+    btnPrimary: { width: "100%", padding: "13px 16px", borderRadius: 999, border: "none", background: "#C23B6B", color: "#fff", fontSize: 14.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" },
+    btnGhost: { width: "100%", padding: "12px 16px", borderRadius: 999, border: "1.5px solid #C23B6B", background: "transparent", color: "#F0A9C4", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" },
     row: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: "1px solid #1E2A44" },
-    linkBtn: { color: "#8FB0FF", background: "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, padding: 0, fontFamily: "inherit" },
+    linkBtn: { color: "#F0A9C4", background: "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, padding: 0, fontFamily: "inherit" },
     dangerBtn: { color: "#E4677E", background: "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, padding: 0, fontFamily: "inherit" },
+    okBtn: { color: "#8ADB9A", background: "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, padding: 0, fontFamily: "inherit" },
     errBox: { background: "#3A1620", border: "1px solid #C0435A", color: "#FFC9D2", padding: "11px 14px", borderRadius: 10, fontSize: 13.5, margin: "0 18px 16px" },
     flash: { background: "#1A2E17", border: "1px solid #4E8A3E", color: "#C9F2BC", padding: "9px 14px", borderRadius: 10, fontSize: 13, margin: "0 18px 16px" },
-    noticeBox: { background: "#241B0D", border: "1px solid #4A3A17", color: "#F2CE9B", padding: "9px 14px", borderRadius: 10, fontSize: 12.5, margin: "0 18px 16px" },
-    listRow: { background: "#0B1220", border: "1px solid #1E2A44", borderRadius: 10, padding: "11px 13px", marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center" },
     backBar: { background: "none", border: "none", color: "#7C8CAE", fontSize: 13, cursor: "pointer", padding: "14px 18px 0", fontFamily: "'IBM Plex Mono',monospace", display: "block" },
-    checkboxRow: { display: "flex", alignItems: "center", gap: 10, padding: "9px 0" },
+    profileCard: { background: "#111A2C", border: "1px solid #1E2A44", borderRadius: 14, padding: "16px", margin: "0 18px 12px", display: "flex", gap: 14, alignItems: "center", cursor: "pointer", textAlign: "left", width: "calc(100% - 36px)" },
+    avatar: { width: 56, height: 56, borderRadius: "50%", background: "linear-gradient(160deg,#5C1E3A,#2A0E24)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0, overflow: "hidden", border: "1px solid #6E2B4E" },
+    tabBar: { display: "flex", gap: 8, overflowX: "auto", padding: "0 18px 14px" },
+    tabBtn: (active) => ({
+      padding: "9px 16px",
+      borderRadius: 999,
+      border: active ? "1.5px solid #C23B6B" : "1.5px solid #263354",
+      background: active ? "#3A1030" : "transparent",
+      color: active ? "#F0A9C4" : "#8FA0C2",
+      fontSize: 13,
+      fontWeight: 700,
+      cursor: "pointer",
+      fontFamily: "inherit",
+      whiteSpace: "nowrap",
+    }),
     badge: { fontSize: 11, fontFamily: "'IBM Plex Mono',monospace", color: "#F2A93B", background: "#241B0D", border: "1px solid #4A3A17", padding: "3px 8px", borderRadius: 6 },
+    infoGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 14px", margin: "12px 0" },
+    infoLabel: { fontSize: 11.5, color: "#7C8CAE", textTransform: "uppercase", letterSpacing: "0.05em" },
+    infoValue: { fontSize: 14, color: "#EAF0FA", marginBottom: 6 },
   };
+
+  const Header = () => (
+    <div style={styles.header}>
+      <div style={styles.brandBox}>{settings.siteName}</div>
+      <div style={{ display: "flex", gap: 8 }}>
+        <button style={styles.pill} onClick={goAdmin}>நிர்வாகி</button>
+      </div>
+    </div>
+  );
 
   const Back = ({ to, label, logout }) => (
     <button
@@ -400,9 +458,8 @@ export default function LMS() {
       onClick={() => {
         setError("");
         setPassInput("");
-        setCodeInput("");
         setResetSent(false);
-        if (logout) handleTeacherLogout();
+        if (logout) handleAdminLogout();
         setScreen(to);
       }}
     >
@@ -410,12 +467,71 @@ export default function LMS() {
     </button>
   );
 
-  const Header = () => (
-    <div style={styles.header}>
-      <div style={styles.brandBox}>{settings.schoolName}</div>
-      <div style={styles.pill}>Class Portal</div>
-      <div style={styles.bell}>🔔</div>
-    </div>
+  const ProfileFormFields = ({ value, onChange }) => (
+    <>
+      <label style={styles.label}>பெயர் *</label>
+      <input style={styles.input} value={value.name} onChange={(e) => onChange({ ...value, name: e.target.value })} placeholder="முழுப் பெயர்" />
+
+      <label style={styles.label}>பாலினம் *</label>
+      <select style={styles.input} value={value.gender} onChange={(e) => onChange({ ...value, gender: e.target.value })}>
+        <option value="">தேர்ந்தெடுக்கவும்</option>
+        {GENDERS.map((g) => (
+          <option key={g} value={g}>{g}</option>
+        ))}
+      </select>
+
+      <label style={styles.label}>பிறந்த தேதி *</label>
+      <input style={styles.input} type="date" max={todayStr()} value={value.dob} onChange={(e) => onChange({ ...value, dob: e.target.value })} />
+
+      <label style={styles.label}>உயரம் (எ.கா. 5'6")</label>
+      <input style={styles.input} value={value.height} onChange={(e) => onChange({ ...value, height: e.target.value })} placeholder="5'6&quot;" />
+
+      <label style={styles.label}>மதம்</label>
+      <select style={styles.input} value={value.religion} onChange={(e) => onChange({ ...value, religion: e.target.value })}>
+        <option value="">தேர்ந்தெடுக்கவும்</option>
+        {RELIGIONS.map((r) => (
+          <option key={r} value={r}>{r}</option>
+        ))}
+      </select>
+
+      <label style={styles.label}>ஜாதி (விருப்பம்)</label>
+      <input style={styles.input} value={value.caste} onChange={(e) => onChange({ ...value, caste: e.target.value })} />
+
+      <label style={styles.label}>தாய்மொழி</label>
+      <input style={styles.input} value={value.motherTongue} onChange={(e) => onChange({ ...value, motherTongue: e.target.value })} />
+
+      <label style={styles.label}>நாடு</label>
+      <input style={styles.input} value={value.country} onChange={(e) => onChange({ ...value, country: e.target.value })} />
+
+      <label style={styles.label}>மாவட்டம் / வசிக்கும் இடம்</label>
+      <input style={styles.input} value={value.district} onChange={(e) => onChange({ ...value, district: e.target.value })} placeholder="எ.கா. யாழ்ப்பாணம்" />
+
+      <label style={styles.label}>திருமண நிலை</label>
+      <select style={styles.input} value={value.maritalStatus} onChange={(e) => onChange({ ...value, maritalStatus: e.target.value })}>
+        <option value="">தேர்ந்தெடுக்கவும்</option>
+        {MARITAL_STATUSES.map((m) => (
+          <option key={m} value={m}>{m}</option>
+        ))}
+      </select>
+
+      <label style={styles.label}>கல்வித் தகுதி</label>
+      <input style={styles.input} value={value.education} onChange={(e) => onChange({ ...value, education: e.target.value })} />
+
+      <label style={styles.label}>தொழில்</label>
+      <input style={styles.input} value={value.profession} onChange={(e) => onChange({ ...value, profession: e.target.value })} />
+
+      <label style={styles.label}>புகைப்பட இணைப்பு (URL, விருப்பம்)</label>
+      <input style={styles.input} value={value.photoUrl} onChange={(e) => onChange({ ...value, photoUrl: e.target.value })} placeholder="https://..." />
+
+      <label style={styles.label}>தன்னைப் பற்றி</label>
+      <textarea style={styles.textarea} value={value.about} onChange={(e) => onChange({ ...value, about: e.target.value })} placeholder="குடும்பம், பொழுதுபோக்கு, எதிர்பார்ப்பு போன்றவை..." />
+
+      <label style={styles.label}>தொடர்பு எண் *</label>
+      <input style={styles.input} value={value.phone} onChange={(e) => onChange({ ...value, phone: e.target.value })} placeholder="+94 7X XXX XXXX" />
+
+      <label style={styles.label}>மின்னஞ்சல் (விருப்பம்)</label>
+      <input style={styles.input} type="email" value={value.email} onChange={(e) => onChange({ ...value, email: e.target.value })} />
+    </>
   );
 
   if (!firebaseConfigured) {
@@ -453,30 +569,208 @@ export default function LMS() {
         <Header />
         <div style={styles.banner}>
           <div style={styles.eyebrow}>வரவேற்கிறோம்</div>
-          <h1 style={styles.h1}>{settings.schoolName}</h1>
+          <h1 style={styles.h1}>{settings.siteName}</h1>
           <p style={styles.sub}>{settings.tagline}</p>
         </div>
         <div style={styles.section}>
           <div style={styles.sectionTitle}>தொடர்வது எப்படி?</div>
-          <button style={styles.roleCard} onClick={goTeacher}>
-            <span style={{ fontSize: 26 }}>👩‍🏫</span><span>நான் ஆசிரியர்</span>
+          <button style={styles.roleCard} onClick={() => { setError(""); setRegisterDone(false); setScreen("register"); }}>
+            <span style={{ fontSize: 26 }}>📝</span><span>சுயவிவரம் பதிவு செய்ய</span>
           </button>
-          <button style={styles.roleCard} onClick={() => setScreen("studentLogin")}>
-            <span style={{ fontSize: 26 }}>🎓</span><span>நான் மாணவர்</span>
+          <button style={styles.roleCard} onClick={() => { setError(""); setScreen("browse"); }}>
+            <span style={{ fontSize: 26 }}>💞</span><span>சுயவிவரங்களை பார்வையிட</span>
+          </button>
+        </div>
+        <div style={styles.section}>
+          <div style={{ ...styles.card, margin: 0 }}>
+            <p style={{ color: "#9FB0CE", fontSize: 13.5, lineHeight: 1.6, margin: 0 }}>
+              தற்போது <strong style={{ color: "#F6F8FC" }}>{approvedProfiles.length}</strong> ஏற்றுக்கொள்ளப்பட்ட சுயவிவரங்கள் உள்ளன. நீங்கள் பதிவு செய்யும் சுயவிவரம் நிர்வாகியால் பரிசீலிக்கப்பட்ட பின் மட்டுமே பொதுவில் காணப்படும்.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ---------- REGISTER ----------
+  if (screen === "register") {
+    if (registerDone) {
+      return (
+        <div style={styles.page}>
+          <Header />
+          <Back to="home" label="முகப்புக்கு" />
+          <div style={styles.section}>
+            <div style={styles.eyebrow}>நன்றி</div>
+            <h1 style={styles.h1}>உங்கள் சுயவிவரம் பதிவு செய்யப்பட்டது</h1>
+          </div>
+          <div style={styles.card}>
+            <p style={{ color: "#9FB0CE", fontSize: 14.5, lineHeight: 1.6, margin: 0 }}>
+              நிர்வாகி பரிசீலித்து ஏற்றுக்கொண்ட பின் உங்கள் சுயவிவரம் பொதுவில் காணப்படும். ஏதேனும் தொடர்பு தேவைப்பட்டால் நாங்கள் உங்களை அணுகுவோம்.
+            </p>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div style={styles.page}>
+        <Header />
+        <Back to="home" label="பின்செல்" />
+        <div style={styles.section}>
+          <div style={styles.eyebrow}>சுயவிவரம் பதிவு</div>
+          <h1 style={styles.h1}>உங்கள் விவரங்களை உள்ளிடவும்</h1>
+        </div>
+        {error && <div style={styles.errBox}>{error}</div>}
+        <div style={styles.card}>
+          <ProfileFormFields value={registerForm} onChange={setRegisterForm} />
+          <button style={styles.btnPrimary} onClick={handleRegisterSubmit} disabled={registerBusy}>
+            {registerBusy ? "சமர்ப்பிக்கிறது…" : "சுயவிவரத்தை சமர்ப்பிக்க"}
           </button>
         </div>
       </div>
     );
   }
 
-  // ---------- TEACHER LOGIN ----------
-  if (screen === "teacherLogin") {
+  // ---------- BROWSE ----------
+  if (screen === "browse") {
     return (
       <div style={styles.page}>
         <Header />
         <Back to="home" label="பின்செல்" />
         <div style={styles.section}>
-          <div style={styles.eyebrow}>ஆசிரியர் நுழைவு</div>
+          <div style={styles.eyebrow}>சுயவிவரங்கள்</div>
+          <h1 style={styles.h1}>பொருத்தமான துணையைத் தேடுங்கள்</h1>
+        </div>
+        <div style={styles.card}>
+          <label style={styles.label}>பாலினம்</label>
+          <select style={styles.input} value={filters.gender} onChange={(e) => setFilters({ ...filters, gender: e.target.value })}>
+            <option value="">அனைத்தும்</option>
+            {GENDERS.map((g) => (
+              <option key={g} value={g}>{g}</option>
+            ))}
+          </select>
+          <label style={styles.label}>மாவட்டம்</label>
+          <input style={styles.input} value={filters.district} onChange={(e) => setFilters({ ...filters, district: e.target.value })} placeholder="எ.கா. யாழ்ப்பாணம்" />
+          <label style={styles.label}>திருமண நிலை</label>
+          <select style={styles.input} value={filters.maritalStatus} onChange={(e) => setFilters({ ...filters, maritalStatus: e.target.value })}>
+            <option value="">அனைத்தும்</option>
+            {MARITAL_STATUSES.map((m) => (
+              <option key={m} value={m}>{m}</option>
+            ))}
+          </select>
+          <div style={{ display: "flex", gap: 10 }}>
+            <div style={{ flex: 1 }}>
+              <label style={styles.label}>குறைந்த வயது</label>
+              <input style={{ ...styles.input, marginBottom: 0 }} type="number" value={filters.minAge} onChange={(e) => setFilters({ ...filters, minAge: e.target.value })} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={styles.label}>அதிக வயது</label>
+              <input style={{ ...styles.input, marginBottom: 0 }} type="number" value={filters.maxAge} onChange={(e) => setFilters({ ...filters, maxAge: e.target.value })} />
+            </div>
+          </div>
+        </div>
+
+        {filteredProfiles.length === 0 && (
+          <div style={styles.card}>
+            <p style={{ color: "#9FB0CE", fontSize: 14, margin: 0 }}>பொருந்தும் சுயவிவரங்கள் இல்லை.</p>
+          </div>
+        )}
+
+        {filteredProfiles.map((p) => {
+          const age = calcAge(p.dob);
+          return (
+            <button key={p.id} style={styles.profileCard} onClick={() => { setSelectedProfileId(p.id); setScreen("profile"); }}>
+              <div style={styles.avatar}>
+                {p.photoUrl ? <img src={p.photoUrl} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : (p.gender === "பெண்" ? "👰" : "🤵")}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontFamily: "'Fraunces',serif", fontWeight: 700, fontSize: 16, color: "#F6F8FC" }}>{p.name}</div>
+                <div style={{ color: "#9FB0CE", fontSize: 13 }}>
+                  {age !== null ? `${age} வயது` : ""}{p.district ? ` • ${p.district}` : ""}{p.profession ? ` • ${p.profession}` : ""}
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // ---------- PROFILE DETAIL ----------
+  if (screen === "profile" && selectedProfile) {
+    const p = selectedProfile;
+    const age = calcAge(p.dob);
+    return (
+      <div style={styles.page}>
+        <Header />
+        <Back to="browse" label="பின்செல்" />
+        <div style={styles.section}>
+          <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+            <div style={{ ...styles.avatar, width: 84, height: 84, fontSize: 34 }}>
+              {p.photoUrl ? <img src={p.photoUrl} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : (p.gender === "பெண்" ? "👰" : "🤵")}
+            </div>
+            <div>
+              <h1 style={{ ...styles.h1, marginBottom: 2 }}>{p.name}</h1>
+              <p style={styles.sub}>{age !== null ? `${age} வயது` : ""}{p.height ? ` • ${p.height}` : ""}</p>
+            </div>
+          </div>
+        </div>
+        {error && <div style={styles.errBox}>{error}</div>}
+        <div style={styles.card}>
+          <div style={styles.infoGrid}>
+            <div><div style={styles.infoLabel}>மதம்</div><div style={styles.infoValue}>{p.religion || "-"}</div></div>
+            <div><div style={styles.infoLabel}>ஜாதி</div><div style={styles.infoValue}>{p.caste || "-"}</div></div>
+            <div><div style={styles.infoLabel}>தாய்மொழி</div><div style={styles.infoValue}>{p.motherTongue || "-"}</div></div>
+            <div><div style={styles.infoLabel}>நாடு</div><div style={styles.infoValue}>{p.country || "-"}</div></div>
+            <div><div style={styles.infoLabel}>மாவட்டம்</div><div style={styles.infoValue}>{p.district || "-"}</div></div>
+            <div><div style={styles.infoLabel}>திருமண நிலை</div><div style={styles.infoValue}>{p.maritalStatus || "-"}</div></div>
+            <div><div style={styles.infoLabel}>கல்வி</div><div style={styles.infoValue}>{p.education || "-"}</div></div>
+            <div><div style={styles.infoLabel}>தொழில்</div><div style={styles.infoValue}>{p.profession || "-"}</div></div>
+          </div>
+          {p.about && (
+            <>
+              <div style={styles.infoLabel}>தன்னைப் பற்றி</div>
+              <p style={{ color: "#EAF0FA", fontSize: 14, lineHeight: 1.6 }}>{p.about}</p>
+            </>
+          )}
+        </div>
+
+        <div style={styles.card}>
+          <div style={styles.eyebrow}>தொடர்பு</div>
+          <p style={{ color: "#9FB0CE", fontSize: 13.5, lineHeight: 1.6, marginTop: 0 }}>
+            தனியுரிமை காரணமாக தொடர்பு விவரங்கள் நேரடியாக காட்டப்படாது. கீழே உங்கள் விவரத்தை பதிவு செய்யவும் — நிர்வாகி இரு தரப்பையும் இணைப்பார்.
+          </p>
+          {interestDone ? (
+            <div style={styles.flash}>உங்கள் விருப்பம் பதிவு செய்யப்பட்டது. நிர்வாகி விரைவில் தொடர்பு கொள்வார்.</div>
+          ) : (
+            <>
+              <label style={styles.label}>உங்கள் பெயர் *</label>
+              <input style={styles.input} value={interestForm.requesterName} onChange={(e) => setInterestForm({ ...interestForm, requesterName: e.target.value })} />
+              <label style={styles.label}>உங்கள் தொடர்பு எண் *</label>
+              <input style={styles.input} value={interestForm.requesterPhone} onChange={(e) => setInterestForm({ ...interestForm, requesterPhone: e.target.value })} />
+              <label style={styles.label}>செய்தி (விருப்பம்)</label>
+              <textarea style={styles.textarea} value={interestForm.message} onChange={(e) => setInterestForm({ ...interestForm, message: e.target.value })} />
+              <button style={styles.btnPrimary} onClick={handleInterestSubmit} disabled={interestBusy}>
+                {interestBusy ? "அனுப்புகிறது…" : "விருப்பம் தெரிவிக்க"}
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+  if (screen === "profile" && !selectedProfile) {
+    setScreen("browse");
+    return null;
+  }
+
+  // ---------- ADMIN LOGIN ----------
+  if (screen === "adminLogin") {
+    return (
+      <div style={styles.page}>
+        <Header />
+        <Back to="home" label="பின்செல்" />
+        <div style={styles.section}>
+          <div style={styles.eyebrow}>நிர்வாகி நுழைவு</div>
           <h1 style={styles.h1}>உங்கள் கணக்கில் உள்நுழையவும்</h1>
         </div>
         {error && <div style={styles.errBox}>{error}</div>}
@@ -487,10 +781,10 @@ export default function LMS() {
             style={styles.input}
             type="email"
             autoComplete="username"
-            value={teacherEmail}
-            onChange={(e) => setTeacherEmail(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleTeacherSignIn()}
-            placeholder="teacher@example.com"
+            value={adminEmail}
+            onChange={(e) => setAdminEmail(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleAdminSignIn()}
+            placeholder="admin@example.com"
           />
           <label style={styles.label}>கடவுச்சொல்</label>
           <input
@@ -499,10 +793,10 @@ export default function LMS() {
             autoComplete="current-password"
             value={passInput}
             onChange={(e) => setPassInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleTeacherSignIn()}
+            onKeyDown={(e) => e.key === "Enter" && handleAdminSignIn()}
             placeholder="கடவுச்சொல்"
           />
-          <button style={styles.btnPrimary} onClick={handleTeacherSignIn} disabled={authBusy}>
+          <button style={styles.btnPrimary} onClick={handleAdminSignIn} disabled={authBusy}>
             {authBusy ? "உள்நுழைகிறது…" : "LOGIN NOW"}
           </button>
           <div style={{ height: 12 }} />
@@ -514,321 +808,134 @@ export default function LMS() {
     );
   }
 
-  // ---------- STUDENT LOGIN ----------
-  if (screen === "studentLogin") {
-    return (
-      <div style={styles.page}>
-        <Header />
-        <Back to="home" label="பின்செல்" />
-        <div style={styles.section}>
-          <div style={styles.eyebrow}>மாணவர் நுழைவு</div>
-          <h1 style={styles.h1}>உங்கள் Access Code-ஐ கொடுங்கள்</h1>
-        </div>
-        {error && <div style={styles.errBox}>{error}</div>}
-        <div style={styles.card}>
-          <label style={styles.label}>Access Code</label>
-          <input style={{ ...styles.input, fontFamily: "'IBM Plex Mono',monospace", letterSpacing: "0.12em" }} value={codeInput} onChange={(e) => setCodeInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleStudentLogin()} placeholder="எ.கா. K3F7QZ" />
-          <button style={styles.btnPrimary} onClick={handleStudentLogin}>LOGIN NOW</button>
-        </div>
-      </div>
-    );
-  }
+  // ---------- ADMIN DASHBOARD ----------
+  if (screen === "admin") {
+    if (!adminUser) {
+      setScreen("adminLogin");
+      return null;
+    }
 
-  // ---------- STUDENT DASHBOARD ----------
-  if (screen === "student" && activeStudent) {
-    return (
-      <div style={styles.page}>
-        <Header />
-        <Back to="home" label="வெளியேறு" />
-        <div style={styles.banner}>
-          <div style={styles.eyebrow}>வணக்கம்</div>
-          <h1 style={styles.h1}>{activeStudent.name}</h1>
-          <p style={styles.sub}>உங்களுக்கு அனுமதிக்கப்பட்ட பாடங்கள் மட்டும் கீழே தெரியும்.</p>
-        </div>
-
-        {mySubjects.length === 0 && (
-          <div style={styles.card}>
-            <p style={{ color: "#7C8CAE", fontSize: 14, margin: 0 }}>உங்களுக்கு இன்னும் எந்த பாடமும் ஒதுக்கப்படவில்லை. ஆசிரியரை தொடர்பு கொள்ளவும்.</p>
-          </div>
-        )}
-
-        {myGradeIds.map((gradeId) => {
-          const grade = grades.find((g) => g.id === gradeId);
-          const subs = mySubjects.filter((s) => s.gradeId === gradeId);
-          return (
-            <div key={gradeId} style={styles.section}>
-              <div style={styles.sectionTitle}>{grade ? grade.name : "பாடங்கள்"}</div>
-              {subs.map((sub) => (
-                <div key={sub.id} style={styles.card}>
-                  <div style={styles.h2}>{sub.name}</div>
-                  <div style={{ ...styles.grid, marginTop: 12 }}>
-                    <div style={styles.tile}>
-                      <div style={styles.tileTop}><span style={styles.tileTitle}>ZOOM CLASS</span></div>
-                      {sub.zoomLink ? (
-                        <a href={sub.zoomLink} target="_blank" rel="noopener noreferrer" style={styles.tileBtn}>Join Now</a>
-                      ) : (
-                        <div style={{ ...styles.tileBtn, opacity: 0.4, cursor: "default" }}>இன்னும் இல்லை</div>
-                      )}
-                    </div>
-                    <div style={styles.tile}>
-                      <div style={styles.tileTop}><span style={styles.tileTitle}>RECORDINGS</span></div>
-                      <div style={{ ...styles.tileBtn, background: "#0D1730", cursor: "default" }}>{sub.recordings.length} recordings</div>
-                    </div>
-                  </div>
-
-                  {sub.recordings.length > 0 && (
-                    <div style={{ marginTop: 14 }}>
-                      <label style={styles.label}>திகதி வாரியாக Recordings</label>
-                      {[...sub.recordings].sort((a, b) => (a.date < b.date ? 1 : -1)).map((r) => (
-                        <div key={r.id} style={styles.listRow}>
-                          <div>
-                            <div style={{ fontSize: 14, fontWeight: 600 }}>{r.title}</div>
-                            <span style={styles.badge}>{fmtDate(r.date)}</span>
-                          </div>
-                          <a href={r.url} target="_blank" rel="noopener noreferrer" style={{ ...styles.linkBtn, textDecoration: "none", fontWeight: 700 }}>▶ பார்க்க</a>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {sub.pdfs.length > 0 && (
-                    <div style={{ marginTop: 14 }}>
-                      <label style={styles.label}>PDF குறிப்புகள்</label>
-                      {sub.pdfs.map((p) => (
-                        <div key={p.id} style={styles.listRow}>
-                          <span style={{ fontSize: 14 }}>📄 {p.title}</span>
-                          <a href={p.url} target="_blank" rel="noopener noreferrer" style={{ ...styles.linkBtn, textDecoration: "none", fontWeight: 700 }}>திற →</a>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          );
-        })}
-      </div>
-    );
-  }
-
-  // ---------- TEACHER DASHBOARD ----------
-  if (screen === "teacher") {
-    if (!teacherUser) {
-      // session ended (signed out elsewhere / token expired) — back to login
+    const renderProfileRow = (p, actions) => {
+      const age = calcAge(p.dob);
+      const isEditing = editingProfileId === p.id;
       return (
-        <div style={styles.page}>
-          <Header />
-          <Back to="teacherLogin" label="மீண்டும் உள்நுழையவும்" />
+        <div key={p.id} style={{ background: "#0B1220", border: "1px solid #1E2A44", borderRadius: 12, padding: "14px", marginBottom: 10 }}>
+          <div style={styles.row}>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 15 }}>{p.name} <span style={styles.badge}>{p.gender}</span></div>
+              <div style={{ color: "#7C8CAE", fontSize: 12.5, marginTop: 3 }}>
+                {age !== null ? `${age} வயது` : ""}{p.district ? ` • ${p.district}` : ""}{p.phone ? ` • ${p.phone}` : ""}
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "flex-end" }}>{actions}</div>
+          </div>
+          {isEditing && (
+            <div style={{ paddingTop: 12 }}>
+              <ProfileFormFields value={editDraft} onChange={setEditDraft} />
+              <div style={{ display: "flex", gap: 10 }}>
+                <button style={styles.btnPrimary} onClick={saveEditProfile}>சேமிக்க</button>
+                <button style={styles.btnGhost} onClick={() => setEditingProfileId(null)}>ரத்து</button>
+              </div>
+            </div>
+          )}
         </div>
       );
-    }
+    };
+
     return (
       <div style={styles.page}>
         <Header />
         <Back to="home" label="வெளியேறு" logout />
         <div style={styles.section}>
-          <div style={styles.eyebrow}>ஆசிரியர் பலகை</div>
-          <h1 style={styles.h1}>வகுப்பை நிர்வகிக்கவும்</h1>
+          <div style={styles.eyebrow}>நிர்வாகி பலகை</div>
+          <h1 style={styles.h1}>சுயவிவரங்களை நிர்வகிக்கவும்</h1>
         </div>
         {error && <div style={styles.errBox}>{error}</div>}
         {savedFlash && <div style={styles.flash}>{savedFlash}</div>}
 
-        {/* Brand */}
-        <div style={styles.card}>
-          <label style={styles.label}>பள்ளி பெயர்</label>
-          <input style={styles.input} value={nameDraft} onChange={(e) => setNameDraft(e.target.value)} placeholder="பள்ளி / வகுப்பு பெயர்" />
-          <label style={styles.label}>Tagline (விருப்பம்)</label>
-          <input style={styles.input} value={taglineDraft} onChange={(e) => setTaglineDraft(e.target.value)} placeholder="சிறு அறிமுக வரி" />
-          <button style={styles.btnGhost} onClick={saveBrand}>பெயரை சேமிக்க</button>
+        <div style={styles.tabBar}>
+          <button style={styles.tabBtn(adminTab === "pending")} onClick={() => setAdminTab("pending")}>பரிசீலனையில் ({pendingProfiles.length})</button>
+          <button style={styles.tabBtn(adminTab === "approved")} onClick={() => setAdminTab("approved")}>ஏற்கப்பட்டவை ({approvedAdminProfiles.length})</button>
+          <button style={styles.tabBtn(adminTab === "rejected")} onClick={() => setAdminTab("rejected")}>நிராகரிக்கப்பட்டவை ({rejectedProfiles.length})</button>
+          <button style={styles.tabBtn(adminTab === "interests")} onClick={() => setAdminTab("interests")}>ஆர்வம் தெரிவித்தவர் ({interests.length})</button>
+          <button style={styles.tabBtn(adminTab === "settings")} onClick={() => setAdminTab("settings")}>அமைப்புகள்</button>
         </div>
 
-        {/* Add grade */}
-        <div style={styles.card}>
-          <label style={styles.label}>புதிய தரம் சேர்க்க (எ.கா. தரம் 4)</label>
-          <div style={{ display: "flex", gap: 8 }}>
-            <input style={{ ...styles.input, marginBottom: 0 }} value={newGradeName} onChange={(e) => setNewGradeName(e.target.value)} placeholder="தரம் 4" />
-          </div>
-          <div style={{ height: 12 }} />
-          <button style={styles.btnPrimary} onClick={addGrade}>தரம் சேர்க்க</button>
-        </div>
-
-        {/* Grades list */}
-        {grades.map((g) => {
-          const gradeSubs = subjects.filter((s) => s.gradeId === g.id);
-          const isOpen = expandedGradeId === g.id;
-          return (
-            <div key={g.id} style={styles.card}>
-              <div style={styles.row}>
-                <div style={{ fontWeight: 700, fontSize: 16 }}>{g.name} <span style={{ color: "#7C8CAE", fontWeight: 400, fontSize: 13 }}>({gradeSubs.length} பாடங்கள்)</span></div>
-                <div style={{ display: "flex", gap: 16 }}>
-                  <button style={styles.linkBtn} onClick={() => setExpandedGradeId(isOpen ? null : g.id)}>{isOpen ? "மூடு" : "நிர்வகி"}</button>
-                  <button style={styles.dangerBtn} onClick={() => removeGrade(g.id)}>நீக்கு</button>
-                </div>
-              </div>
-
-              {isOpen && (
-                <div style={{ paddingTop: 14 }}>
-                  {/* add subject */}
-                  <div style={styles.subCard}>
-                    <label style={styles.label}>புதிய பாடம் சேர்க்க</label>
-                    <input style={styles.input} value={newSubjectName} onChange={(e) => setNewSubjectName(e.target.value)} placeholder="எ.கா. கணிதம்" />
-                    <input style={styles.input} value={newSubjectZoom} onChange={(e) => setNewSubjectZoom(e.target.value)} placeholder="Zoom Link (https://zoom.us/j/...)" />
-                    <button style={styles.btnPrimary} onClick={() => addSubject(g.id)}>பாடம் சேர்க்க</button>
-                  </div>
-
-                  {/* subjects */}
-                  {gradeSubs.map((sub) => {
-                    const subOpen = expandedSubjectId === sub.id;
-                    return (
-                      <div key={sub.id} style={styles.subCard}>
-                        <div style={styles.row}>
-                          <div style={{ fontWeight: 700, fontSize: 14.5 }}>{sub.name}</div>
-                          <div style={{ display: "flex", gap: 14 }}>
-                            <button style={styles.linkBtn} onClick={() => setExpandedSubjectId(subOpen ? null : sub.id)}>{subOpen ? "மூடு" : "திற"}</button>
-                            <button style={styles.dangerBtn} onClick={() => removeSubject(sub.id)}>நீக்கு</button>
-                          </div>
-                        </div>
-
-                        {subOpen && (
-                          <div style={{ paddingTop: 12 }}>
-                            <label style={styles.label}>Zoom Link</label>
-                            <div style={{ display: "flex", gap: 8 }}>
-                              <input
-                                style={{ ...styles.input, marginBottom: 0 }}
-                                value={zoomEditDraft[sub.id] ?? sub.zoomLink}
-                                onChange={(e) => setZoomEditDraft({ ...zoomEditDraft, [sub.id]: e.target.value })}
-                                placeholder="https://zoom.us/j/..."
-                              />
-                            </div>
-                            <div style={{ height: 10 }} />
-                            <button style={styles.btnGhost} onClick={() => updateSubjectZoom(sub.id)}>Zoom Link சேமிக்க</button>
-
-                            <div style={{ height: 18 }} />
-                            <label style={styles.label}>Recordings ({sub.recordings.length})</label>
-                            {[...sub.recordings].sort((a, b) => (a.date < b.date ? 1 : -1)).map((r) => (
-                              <div key={r.id} style={styles.listRow}>
-                                <div>
-                                  <div style={{ fontSize: 13.5, fontWeight: 600 }}>{r.title}</div>
-                                  <span style={styles.badge}>{fmtDate(r.date)}</span>
-                                </div>
-                                <button style={styles.dangerBtn} onClick={() => removeRecording(sub.id, r.id)}>நீக்கு</button>
-                              </div>
-                            ))}
-                            <input style={{ ...styles.input, marginTop: 8 }} type="date" value={recDate} onChange={(e) => setRecDate(e.target.value)} />
-                            <input style={styles.input} value={recTitle} onChange={(e) => setRecTitle(e.target.value)} placeholder="Recording தலைப்பு (எ.கா. பாடம் 5)" />
-                            <input style={styles.input} value={recUrl} onChange={(e) => setRecUrl(e.target.value)} placeholder="Recording Link" />
-                            <button style={styles.btnPrimary} onClick={() => addRecording(sub.id)}>Recording சேர்க்க</button>
-
-                            <div style={{ height: 18 }} />
-                            <label style={styles.label}>PDF குறிப்புகள் ({sub.pdfs.length})</label>
-                            {sub.pdfs.map((p) => (
-                              <div key={p.id} style={styles.listRow}>
-                                <span style={{ fontSize: 13.5 }}>📄 {p.title}</span>
-                                <button style={styles.dangerBtn} onClick={() => removeSubjectPdf(sub.id, p.id)}>நீக்கு</button>
-                              </div>
-                            ))}
-                            <input style={{ ...styles.input, marginTop: 8 }} value={subPdfTitle} onChange={(e) => setSubPdfTitle(e.target.value)} placeholder="PDF தலைப்பு" />
-                            <input style={styles.input} value={subPdfUrl} onChange={(e) => setSubPdfUrl(e.target.value)} placeholder="PDF Link" />
-                            <button style={styles.btnPrimary} onClick={() => addSubjectPdf(sub.id)}>PDF சேர்க்க</button>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                  {gradeSubs.length === 0 && <p style={{ color: "#7C8CAE", fontSize: 13.5 }}>இன்னும் பாடம் சேர்க்கப்படவில்லை.</p>}
-                </div>
-              )}
-            </div>
-          );
-        })}
-
-        {/* Add student */}
-        <div style={styles.card}>
-          <label style={styles.label}>புதிய மாணவரைச் சேர்க்க</label>
-          <input style={styles.input} value={newStudentName} onChange={(e) => setNewStudentName(e.target.value)} placeholder="மாணவர் பெயர்" />
-          <label style={styles.label}>Access Code</label>
-          <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-            <input style={{ ...styles.input, marginBottom: 0, fontFamily: "'IBM Plex Mono',monospace" }} value={newStudentCode} onChange={(e) => setNewStudentCode(e.target.value.toUpperCase())} />
-            <button style={{ ...styles.btnGhost, width: "auto", padding: "0 18px" }} onClick={() => setNewStudentCode(genCode())}>↻</button>
-          </div>
-          <button style={styles.btnPrimary} onClick={addStudent}>மாணவரைச் சேர்க்க</button>
-        </div>
-
-        {/* Students list with per-subject permission */}
-        <div style={styles.card}>
-          <div style={styles.row}>
-            <label style={{ ...styles.label, marginBottom: 0 }}>மாணவர்கள் ({students.length})</label>
-            {students.length > 0 && (
-              <button style={styles.linkBtn} onClick={() => setShowCodeList(!showCodeList)}>
-                {showCodeList ? "மூடு" : "எல்லா Codes-ஐ பார்க்க"}
-              </button>
+        {adminTab === "pending" && (
+          <div style={styles.card}>
+            {pendingProfiles.length === 0 && <p style={{ color: "#9FB0CE", fontSize: 14, margin: 0 }}>பரிசீலனையில் சுயவிவரங்கள் இல்லை.</p>}
+            {pendingProfiles.map((p) =>
+              renderProfileRow(p, [
+                <button key="a" style={styles.okBtn} onClick={() => approveProfile(p.id)}>ஏற்றுக்கொள்</button>,
+                <button key="r" style={styles.dangerBtn} onClick={() => rejectProfile(p.id)}>நிராகரி</button>,
+                <button key="e" style={styles.linkBtn} onClick={() => startEditProfile(p)}>திருத்து</button>,
+                <button key="d" style={styles.dangerBtn} onClick={() => deleteProfile(p.id)}>நீக்கு</button>,
+              ])
             )}
           </div>
+        )}
 
-          {showCodeList && students.length > 0 && (
-            <div style={styles.subCard}>
-              <textarea
-                readOnly
-                value={students.map((s) => `${s.name} — ${s.code}`).join("\n")}
-                style={{ ...styles.input, height: 140, resize: "vertical", fontFamily: "'IBM Plex Mono',monospace", fontSize: 13 }}
-              />
-              <button style={styles.btnPrimary} onClick={copyCodeList}>📋 பட்டியலை Copy பண்ண</button>
-            </div>
-          )}
+        {adminTab === "approved" && (
+          <div style={styles.card}>
+            {approvedAdminProfiles.length === 0 && <p style={{ color: "#9FB0CE", fontSize: 14, margin: 0 }}>ஏற்கப்பட்ட சுயவிவரங்கள் இல்லை.</p>}
+            {approvedAdminProfiles.map((p) =>
+              renderProfileRow(p, [
+                <button key="e" style={styles.linkBtn} onClick={() => startEditProfile(p)}>திருத்து</button>,
+                <button key="r" style={styles.dangerBtn} onClick={() => rejectProfile(p.id)}>நிராகரி</button>,
+                <button key="d" style={styles.dangerBtn} onClick={() => deleteProfile(p.id)}>நீக்கு</button>,
+              ])
+            )}
+          </div>
+        )}
 
-          {students.length > 6 && (
-            <input
-              style={styles.input}
-              value={studentSearch}
-              onChange={(e) => setStudentSearch(e.target.value)}
-              placeholder="மாணவர் பெயரில் தேடவும்…"
-            />
-          )}
+        {adminTab === "rejected" && (
+          <div style={styles.card}>
+            {rejectedProfiles.length === 0 && <p style={{ color: "#9FB0CE", fontSize: 14, margin: 0 }}>நிராகரிக்கப்பட்ட சுயவிவரங்கள் இல்லை.</p>}
+            {rejectedProfiles.map((p) =>
+              renderProfileRow(p, [
+                <button key="o" style={styles.okBtn} onClick={() => reconsiderProfile(p.id)}>மீண்டும் பரிசீலி</button>,
+                <button key="d" style={styles.dangerBtn} onClick={() => deleteProfile(p.id)}>நீக்கு</button>,
+              ])
+            )}
+          </div>
+        )}
 
-          {students.length === 0 && <p style={{ color: "#7C8CAE", fontSize: 14 }}>இன்னும் மாணவர் யாரும் சேர்க்கப்படவில்லை.</p>}
-          {students
-            .filter((s) => s.name.toLowerCase().includes(studentSearch.trim().toLowerCase()))
-            .map((s) => {
-            const isOpen = expandedStudentId === s.id;
-            return (
-              <div key={s.id}>
-                <div style={styles.row}>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: 15 }}>{s.name}</div>
-                    <span style={styles.ticket}>{s.code}</span>
-                  </div>
-                  <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-                    <button style={styles.linkBtn} onClick={() => setExpandedStudentId(isOpen ? null : s.id)}>{isOpen ? "மூடு" : `அனுமதிகள் (${s.subjectIds.length})`}</button>
-                    <button style={styles.dangerBtn} onClick={() => removeStudent(s.id)}>நீக்கு</button>
+        {adminTab === "interests" && (
+          <div style={styles.card}>
+            {interests.length === 0 && <p style={{ color: "#9FB0CE", fontSize: 14, margin: 0 }}>ஆர்வம் தெரிவித்தவர்கள் இல்லை.</p>}
+            {interests.map((it) => {
+              const target = allProfiles.find((p) => p.id === it.profileId);
+              return (
+                <div key={it.id} style={{ background: "#0B1220", border: "1px solid #1E2A44", borderRadius: 12, padding: "14px", marginBottom: 10 }}>
+                  <div style={styles.row}>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 14.5 }}>{it.requesterName} <span style={{ color: "#7C8CAE", fontWeight: 400, fontSize: 12.5 }}>→ {target ? target.name : "(நீக்கப்பட்ட சுயவிவரம்)"}</span></div>
+                      <div style={{ color: "#7C8CAE", fontSize: 12.5, marginTop: 3 }}>
+                        {it.requesterPhone}{target?.phone ? ` • சுயவிவர எண்: ${target.phone}` : ""} • {fmtDate(it.createdAt)}
+                      </div>
+                      {it.message && <div style={{ color: "#9FB0CE", fontSize: 13, marginTop: 6 }}>{it.message}</div>}
+                    </div>
+                    <button style={styles.dangerBtn} onClick={() => deleteInterest(it.id)}>நீக்கு</button>
                   </div>
                 </div>
-                {isOpen && (
-                  <div style={{ padding: "10px 0 18px" }}>
-                    {grades.length === 0 && <p style={{ color: "#7C8CAE", fontSize: 13.5 }}>முதலில் தரம் மற்றும் பாடங்களை சேர்க்கவும்.</p>}
-                    {grades.map((g) => {
-                      const gsubs = subjects.filter((s2) => s2.gradeId === g.id);
-                      if (gsubs.length === 0) return null;
-                      return (
-                        <div key={g.id} style={{ marginBottom: 10 }}>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: "#AEBEDD", marginBottom: 2 }}>{g.name}</div>
-                          {gsubs.map((sub) => (
-                            <label key={sub.id} style={styles.checkboxRow}>
-                              <input type="checkbox" checked={s.subjectIds.includes(sub.id)} onChange={() => toggleSubjectForStudent(s.id, sub.id)} style={{ width: 17, height: 17 }} />
-                              <span style={{ fontSize: 14 }}>{sub.name}</span>
-                            </label>
-                          ))}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
+
+        {adminTab === "settings" && (
+          <div style={styles.card}>
+            <label style={styles.label}>தளத்தின் பெயர்</label>
+            <input style={styles.input} value={nameDraft} onChange={(e) => setNameDraft(e.target.value)} />
+            <label style={styles.label}>Tagline</label>
+            <input style={styles.input} value={taglineDraft} onChange={(e) => setTaglineDraft(e.target.value)} />
+            <button style={styles.btnGhost} onClick={saveSiteSettings}>அமைப்புகளை சேமிக்க</button>
+          </div>
+        )}
       </div>
     );
   }
 
+  setScreen("home");
   return null;
 }
