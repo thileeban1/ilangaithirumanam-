@@ -6,6 +6,8 @@ import {
   updateDoc,
   deleteDoc,
   setDoc,
+  getDoc,
+  runTransaction,
   onSnapshot,
   query,
   where,
@@ -14,6 +16,7 @@ import {
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
   signOut,
   sendPasswordResetEmail,
 } from "firebase/auth";
@@ -118,7 +121,24 @@ const DEFAULT_SETTINGS = {
 
 const PROFILES_COLLECTION = "profiles";
 const INTERESTS_COLLECTION = "interests";
+const ADMINS_COLLECTION = "admins";
 const SETTINGS_DOC = "site";
+
+const MEMBER_EMAIL_DOMAIN = "members.lanka-matrimony.app";
+const digitsOnly = (s) => (s || "").replace(/\D/g, "");
+const memberEmailFromPhone = (phone) => `m${digitsOnly(phone)}@${MEMBER_EMAIL_DOMAIN}`;
+
+const STATUS_LABELS = { pending: "பரிசீலனையில்", approved: "ஏற்றுக்கொள்ளப்பட்டது", rejected: "நிராகரிக்கப்பட்டது" };
+
+const assignMemberId = async () => {
+  const counterRef = doc(db, "counters", "memberId");
+  return runTransaction(db, async (tx) => {
+    const snap = await tx.get(counterRef);
+    const current = snap.exists() ? snap.data().next : 10000;
+    tx.set(counterRef, { next: current + 1 });
+    return current;
+  });
+};
 
 export default function MatrimonyApp() {
   const [screen, setScreen] = useState("home"); // home | register | browse | profile | adminLogin | admin
@@ -132,9 +152,22 @@ export default function MatrimonyApp() {
 
   // register form
   const [registerForm, setRegisterForm] = useState(EMPTY_PROFILE);
+  const [registerPassword, setRegisterPassword] = useState("");
+  const [registerPasswordConfirm, setRegisterPasswordConfirm] = useState("");
   const [registerBusy, setRegisterBusy] = useState(false);
   const [registerDone, setRegisterDone] = useState(false);
+  const [registeredMemberId, setRegisteredMemberId] = useState(null);
   const [photoUploading, setPhotoUploading] = useState(false);
+
+  // member: auth + own data
+  const [isAdminUser, setIsAdminUser] = useState(false);
+  const [memberPhone, setMemberPhone] = useState("");
+  const [memberPassword, setMemberPassword] = useState("");
+  const [myProfile, setMyProfile] = useState(null);
+  const [myInterestsSent, setMyInterestsSent] = useState([]);
+  const [myInterestsReceived, setMyInterestsReceived] = useState([]);
+  const [editingMyProfile, setEditingMyProfile] = useState(false);
+  const [myEditDraft, setMyEditDraft] = useState(EMPTY_PROFILE);
 
   // browse filters
   const [filters, setFilters] = useState({ gender: "", district: "", maritalStatus: "", minAge: "", maxAge: "" });
@@ -145,7 +178,7 @@ export default function MatrimonyApp() {
   const [interestDone, setInterestDone] = useState(false);
 
   // admin: auth
-  const [adminUser, setAdminUser] = useState(null);
+  const [authUser, setAuthUser] = useState(null);
   const [authReady, setAuthReady] = useState(false);
   const [adminEmail, setAdminEmail] = useState("");
   const [passInput, setPassInput] = useState("");
@@ -167,7 +200,7 @@ export default function MatrimonyApp() {
       return;
     }
     const unsub = onAuthStateChanged(auth, (user) => {
-      setAdminUser(user);
+      setAuthUser(user);
       setAuthReady(true);
     });
     return unsub;
@@ -219,7 +252,17 @@ export default function MatrimonyApp() {
   }, []);
 
   useEffect(() => {
-    if (!adminUser || !db) {
+    if (!authUser || !db) {
+      setIsAdminUser(false);
+      return;
+    }
+    getDoc(doc(db, ADMINS_COLLECTION, authUser.uid))
+      .then((snap) => setIsAdminUser(snap.exists()))
+      .catch(() => setIsAdminUser(false));
+  }, [authUser]);
+
+  useEffect(() => {
+    if (!authUser || !isAdminUser || !db) {
       setAllProfiles([]);
       setInterests([]);
       return;
@@ -234,10 +277,43 @@ export default function MatrimonyApp() {
       unsubAll();
       unsubInterests();
     };
-  }, [adminUser]);
+  }, [authUser, isAdminUser]);
 
   useEffect(() => {
-    setInterestForm(EMPTY_INTEREST);
+    if (!authUser || isAdminUser || !db) {
+      setMyProfile(null);
+      setMyInterestsSent([]);
+      setMyInterestsReceived([]);
+      return;
+    }
+    const unsubProfile = onSnapshot(
+      query(collection(db, PROFILES_COLLECTION), where("ownerUid", "==", authUser.uid)),
+      (snap) => {
+        const d = snap.docs[0];
+        setMyProfile(d ? { id: d.id, ...d.data() } : null);
+      }
+    );
+    const unsubSent = onSnapshot(
+      query(collection(db, INTERESTS_COLLECTION), where("requesterUid", "==", authUser.uid)),
+      (snap) => setMyInterestsSent(sortByCreatedDesc(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
+    );
+    const unsubReceived = onSnapshot(
+      query(collection(db, INTERESTS_COLLECTION), where("recipientUid", "==", authUser.uid)),
+      (snap) => setMyInterestsReceived(sortByCreatedDesc(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
+    );
+    return () => {
+      unsubProfile();
+      unsubSent();
+      unsubReceived();
+    };
+  }, [authUser, isAdminUser]);
+
+  useEffect(() => {
+    if (authUser && !isAdminUser && myProfile) {
+      setInterestForm({ requesterName: myProfile.name || "", requesterPhone: myProfile.phone || "", message: "" });
+    } else {
+      setInterestForm(EMPTY_INTEREST);
+    }
     setInterestDone(false);
   }, [selectedProfileId]);
 
@@ -272,20 +348,40 @@ export default function MatrimonyApp() {
     if (!f.name.trim() || !f.gender || !f.dob || !f.phone.trim()) {
       return setError("பெயர், பாலினம், பிறந்த தேதி, தொடர்பு எண் ஆகியவற்றை நிரப்பவும்.");
     }
+    if (registerPassword.length < 6) {
+      return setError("கடவுச்சொல் குறைந்தது 6 எழுத்துகள் இருக்க வேண்டும்.");
+    }
+    if (registerPassword !== registerPasswordConfirm) {
+      return setError("கடவுச்சொற்கள் பொருந்தவில்லை.");
+    }
     setError("");
     setRegisterBusy(true);
     try {
+      const email = memberEmailFromPhone(f.phone);
+      const cred = await createUserWithEmailAndPassword(auth, email, registerPassword);
+      const memberId = await assignMemberId();
       await addDoc(collection(db, PROFILES_COLLECTION), {
         ...f,
         name: f.name.trim(),
         phone: f.phone.trim(),
         status: "pending",
+        ownerUid: cred.user.uid,
+        memberId,
         createdAt: serverTimestamp(),
       });
+      setRegisteredMemberId(memberId);
       setRegisterDone(true);
       setRegisterForm(EMPTY_PROFILE);
+      setRegisterPassword("");
+      setRegisterPasswordConfirm("");
     } catch (e) {
-      setError("சேமிக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்.");
+      if (e.code === "auth/email-already-in-use") {
+        setError("இந்த தொடர்பு எண் ஏற்கனவே பதிவு செய்யப்பட்டுள்ளது. உள்நுழையவும்.");
+      } else if (e.code === "auth/weak-password") {
+        setError("கடவுச்சொல் மிகவும் எளிதானது. வேறு கடவுச்சொல் தேர்ந்தெடுக்கவும்.");
+      } else {
+        setError("சேமிக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்.");
+      }
     } finally {
       setRegisterBusy(false);
     }
@@ -301,6 +397,8 @@ export default function MatrimonyApp() {
     try {
       await addDoc(collection(db, INTERESTS_COLLECTION), {
         profileId: selectedProfileId,
+        recipientUid: selectedProfile?.ownerUid || null,
+        requesterUid: authUser && !isAdminUser ? authUser.uid : null,
         requesterName: interestForm.requesterName.trim(),
         requesterPhone: interestForm.requesterPhone.trim(),
         message: interestForm.message.trim(),
@@ -317,7 +415,47 @@ export default function MatrimonyApp() {
   // ---------- admin: auth ----------
   const goAdmin = () => {
     setError("");
-    setScreen(adminUser ? "admin" : "adminLogin");
+    setScreen(authUser && isAdminUser ? "admin" : "adminLogin");
+  };
+
+  const goMemberArea = () => {
+    setError("");
+    setScreen(authUser && !isAdminUser ? "memberDashboard" : "memberLogin");
+  };
+
+  const handleMemberSignIn = async () => {
+    if (!memberPhone.trim() || !memberPassword.trim()) return setError("தொடர்பு எண் மற்றும் கடவுச்சொல்லை உள்ளிடவும்.");
+    setAuthBusy(true);
+    setError("");
+    try {
+      await signInWithEmailAndPassword(auth, memberEmailFromPhone(memberPhone), memberPassword);
+      setMemberPassword("");
+      setScreen("memberDashboard");
+    } catch (e) {
+      setError(authErrorMessage(e));
+    } finally {
+      setAuthBusy(false);
+    }
+  };
+
+  const startEditMyProfile = () => {
+    if (!myProfile) return;
+    setMyEditDraft({ ...EMPTY_PROFILE, ...myProfile });
+    setEditingMyProfile(true);
+  };
+
+  const saveMyProfile = async () => {
+    if (!myEditDraft.name.trim() || !myEditDraft.gender || !myEditDraft.phone.trim()) {
+      return setError("பெயர், பாலினம், தொடர்பு எண் ஆகியவற்றை நிரப்பவும்.");
+    }
+    try {
+      const { id, status, createdAt, ownerUid, memberId, ...rest } = myEditDraft;
+      await updateDoc(doc(db, PROFILES_COLLECTION, myProfile.id), rest);
+      setEditingMyProfile(false);
+      flash("மாற்றங்கள் சேமிக்கப்பட்டன");
+    } catch (e) {
+      setError("சேமிக்க முடியவில்லை.");
+    }
   };
 
   const handleAdminSignIn = async () => {
@@ -349,7 +487,7 @@ export default function MatrimonyApp() {
     }
   };
 
-  const handleAdminLogout = () => {
+  const handleLogout = () => {
     signOut(auth).catch(() => {});
   };
 
@@ -505,7 +643,7 @@ export default function MatrimonyApp() {
         setError("");
         setPassInput("");
         setResetSent(false);
-        if (logout) handleAdminLogout();
+        if (logout) handleLogout();
         setScreen(to);
       }}
     >
@@ -637,6 +775,9 @@ export default function MatrimonyApp() {
           <button style={styles.roleCard} onClick={() => { setError(""); setScreen("browse"); }}>
             <span style={{ fontSize: 26 }}>💞</span><span>சுயவிவரங்களை பார்வையிட</span>
           </button>
+          <button style={styles.roleCard} onClick={goMemberArea}>
+            <span style={{ fontSize: 26 }}>👤</span><span>உறுப்பினர் / எனது Dashboard</span>
+          </button>
         </div>
         <div style={styles.section}>
           <div style={{ ...styles.card, margin: 0 }}>
@@ -661,10 +802,17 @@ export default function MatrimonyApp() {
             <h1 style={styles.h1}>உங்கள் சுயவிவரம் பதிவு செய்யப்பட்டது</h1>
           </div>
           <div style={styles.card}>
+            {registeredMemberId && (
+              <>
+                <div style={styles.infoLabel}>உங்கள் Profile ID</div>
+                <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 26, fontWeight: 700, color: "#F2A93B", marginBottom: 14 }}>{registeredMemberId}</div>
+              </>
+            )}
             <p style={{ color: "#9FB0CE", fontSize: 14.5, lineHeight: 1.6, margin: 0 }}>
-              நிர்வாகி பரிசீலித்து ஏற்றுக்கொண்ட பின் உங்கள் சுயவிவரம் பொதுவில் காணப்படும். ஏதேனும் தொடர்பு தேவைப்பட்டால் நாங்கள் உங்களை அணுகுவோம்.
+              நிர்வாகி பரிசீலித்து ஏற்றுக்கொண்ட பின் உங்கள் சுயவிவரம் பொதுவில் காணப்படும். உங்கள் தொடர்பு எண் + கடவுச்சொல் வைத்து "உறுப்பினர்" பட்டன் மூலம் எப்போதும் login செய்து உங்கள் status-ஐ பார்க்கலாம்.
             </p>
           </div>
+          <button style={{ ...styles.btnGhost, margin: "0 18px", width: "calc(100% - 36px)" }} onClick={() => setScreen("memberDashboard")}>எனது Dashboard-க்கு செல்ல</button>
         </div>
       );
     }
@@ -679,6 +827,10 @@ export default function MatrimonyApp() {
         {error && <div style={styles.errBox}>{error}</div>}
         <div style={styles.card}>
           <ProfileFormFields value={registerForm} onChange={setRegisterForm} />
+          <label style={styles.label}>கடவுச்சொல் * (login-க்கு பயன்படும்)</label>
+          <input style={styles.input} type="password" value={registerPassword} onChange={(e) => setRegisterPassword(e.target.value)} placeholder="குறைந்தது 6 எழுத்துகள்" />
+          <label style={styles.label}>கடவுச்சொல் மீண்டும் *</label>
+          <input style={styles.input} type="password" value={registerPasswordConfirm} onChange={(e) => setRegisterPasswordConfirm(e.target.value)} />
           <button style={styles.btnPrimary} onClick={handleRegisterSubmit} disabled={registerBusy || photoUploading}>
             {registerBusy ? "சமர்ப்பிக்கிறது…" : "சுயவிவரத்தை சமர்ப்பிக்க"}
           </button>
@@ -865,9 +1017,132 @@ export default function MatrimonyApp() {
     );
   }
 
+  // ---------- MEMBER LOGIN ----------
+  if (screen === "memberLogin") {
+    return (
+      <div style={styles.page}>
+        <Header />
+        <Back to="home" label="பின்செல்" />
+        <div style={styles.section}>
+          <div style={styles.eyebrow}>உறுப்பினர் நுழைவு</div>
+          <h1 style={styles.h1}>உங்கள் Dashboard-க்கு உள்நுழையவும்</h1>
+        </div>
+        {error && <div style={styles.errBox}>{error}</div>}
+        <div style={styles.card}>
+          <label style={styles.label}>பதிவு செய்த தொடர்பு எண்</label>
+          <input
+            style={styles.input}
+            value={memberPhone}
+            onChange={(e) => setMemberPhone(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleMemberSignIn()}
+            placeholder="+94 7X XXX XXXX"
+          />
+          <label style={styles.label}>கடவுச்சொல்</label>
+          <input
+            style={styles.input}
+            type="password"
+            value={memberPassword}
+            onChange={(e) => setMemberPassword(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleMemberSignIn()}
+            placeholder="கடவுச்சொல்"
+          />
+          <button style={styles.btnPrimary} onClick={handleMemberSignIn} disabled={authBusy}>
+            {authBusy ? "உள்நுழைகிறது…" : "LOGIN NOW"}
+          </button>
+          <div style={{ height: 14 }} />
+          <p style={{ color: "#7C8CAE", fontSize: 12.5, margin: 0, textAlign: "center" }}>
+            கணக்கு இல்லையா?{" "}
+            <button style={{ ...styles.linkBtn, display: "inline" }} onClick={() => { setError(""); setRegisterDone(false); setScreen("register"); }}>
+              சுயவிவரம் பதிவு செய்யவும்
+            </button>
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ---------- MEMBER DASHBOARD ----------
+  if (screen === "memberDashboard") {
+    if (!authUser || isAdminUser) {
+      setScreen("memberLogin");
+      return null;
+    }
+    const age = myProfile ? calcAge(myProfile.dob) : null;
+    return (
+      <div style={styles.page}>
+        <Header />
+        <Back to="home" label="வெளியேறு" logout />
+        <div style={styles.section}>
+          <div style={styles.eyebrow}>எனது Dashboard</div>
+          <h1 style={styles.h1}>{myProfile ? myProfile.name : "உங்கள் கணக்கு"}</h1>
+        </div>
+        {error && <div style={styles.errBox}>{error}</div>}
+        {savedFlash && <div style={styles.flash}>{savedFlash}</div>}
+
+        {!myProfile && (
+          <div style={styles.card}>
+            <p style={{ color: "#9FB0CE", fontSize: 14, margin: 0 }}>சுயவிவரம் காணப்படவில்லை.</p>
+          </div>
+        )}
+
+        {myProfile && !editingMyProfile && (
+          <div style={styles.card}>
+            <div style={styles.infoGrid}>
+              <div><div style={styles.infoLabel}>Profile ID</div><div style={styles.infoValue}>{myProfile.memberId || "-"}</div></div>
+              <div><div style={styles.infoLabel}>நிலை</div><div style={styles.infoValue}>{STATUS_LABELS[myProfile.status] || myProfile.status}</div></div>
+              <div><div style={styles.infoLabel}>வயது</div><div style={styles.infoValue}>{age !== null ? age : "-"}</div></div>
+              <div><div style={styles.infoLabel}>மாவட்டம்</div><div style={styles.infoValue}>{myProfile.district || "-"}</div></div>
+            </div>
+            <button style={styles.btnGhost} onClick={startEditMyProfile}>எனது சுயவிவரத்தை திருத்த</button>
+          </div>
+        )}
+
+        {myProfile && editingMyProfile && (
+          <div style={styles.card}>
+            <ProfileFormFields value={myEditDraft} onChange={setMyEditDraft} />
+            <div style={{ display: "flex", gap: 10 }}>
+              <button style={styles.btnPrimary} onClick={saveMyProfile} disabled={photoUploading}>சேமிக்க</button>
+              <button style={styles.btnGhost} onClick={() => setEditingMyProfile(false)}>ரத்து</button>
+            </div>
+          </div>
+        )}
+
+        <div style={styles.section}>
+          <div style={styles.sectionTitle}>📥 எனக்கு வந்த விருப்பங்கள் ({myInterestsReceived.length})</div>
+        </div>
+        <div style={styles.card}>
+          {myInterestsReceived.length === 0 && <p style={{ color: "#9FB0CE", fontSize: 14, margin: 0 }}>இதுவரை யாரும் விருப்பம் தெரிவிக்கவில்லை.</p>}
+          {myInterestsReceived.map((it) => (
+            <div key={it.id} style={{ background: "#0B1220", border: "1px solid #1E2A44", borderRadius: 10, padding: "12px", marginBottom: 8 }}>
+              <div style={{ fontWeight: 700, fontSize: 14 }}>{it.requesterName}</div>
+              <div style={{ color: "#7C8CAE", fontSize: 12.5, marginTop: 3 }}>{it.requesterPhone} • {fmtDate(it.createdAt)}</div>
+              {it.message && <div style={{ color: "#9FB0CE", fontSize: 13, marginTop: 6 }}>{it.message}</div>}
+            </div>
+          ))}
+        </div>
+
+        <div style={styles.section}>
+          <div style={styles.sectionTitle}>📤 நான் தெரிவித்த விருப்பங்கள் ({myInterestsSent.length})</div>
+        </div>
+        <div style={styles.card}>
+          {myInterestsSent.length === 0 && <p style={{ color: "#9FB0CE", fontSize: 14, margin: 0 }}>நீங்கள் இதுவரை யாருக்கும் விருப்பம் தெரிவிக்கவில்லை.</p>}
+          {myInterestsSent.map((it) => {
+            const target = approvedProfiles.find((p) => p.id === it.profileId);
+            return (
+              <div key={it.id} style={{ background: "#0B1220", border: "1px solid #1E2A44", borderRadius: 10, padding: "12px", marginBottom: 8 }}>
+                <div style={{ fontWeight: 700, fontSize: 14 }}>{target ? target.name : "சுயவிவரம்"}</div>
+                <div style={{ color: "#7C8CAE", fontSize: 12.5, marginTop: 3 }}>{fmtDate(it.createdAt)}</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
   // ---------- ADMIN DASHBOARD ----------
   if (screen === "admin") {
-    if (!adminUser) {
+    if (!authUser || !isAdminUser) {
       setScreen("adminLogin");
       return null;
     }
@@ -879,7 +1154,7 @@ export default function MatrimonyApp() {
         <div key={p.id} style={{ background: "#0B1220", border: "1px solid #1E2A44", borderRadius: 12, padding: "14px", marginBottom: 10 }}>
           <div style={styles.row}>
             <div>
-              <div style={{ fontWeight: 700, fontSize: 15 }}>{p.name} <span style={styles.badge}>{p.gender}</span></div>
+              <div style={{ fontWeight: 700, fontSize: 15 }}>{p.name} <span style={styles.badge}>{p.gender}</span>{p.memberId && <span style={styles.badge}> #{p.memberId}</span>}</div>
               <div style={{ color: "#7C8CAE", fontSize: 12.5, marginTop: 3 }}>
                 {age !== null ? `${age} வயது` : ""}{p.district ? ` • ${p.district}` : ""}{p.phone ? ` • ${p.phone}` : ""}
               </div>

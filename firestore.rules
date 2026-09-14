@@ -1,41 +1,79 @@
 rules_version = '2';
 
-// profiles: anyone can submit a new profile (status is forced to "pending" so
-// nobody can self-approve), but only an approved profile is publicly
-// readable. Signed-in admins (accounts created by you in the Firebase
-// Console -> Authentication -> Users) can read every profile (to review the
-// pending queue) and can update/delete any profile (approve, reject, edit).
-//
-// interests: anyone can send an interest request on a profile, but only a
-// signed-in admin can read/manage the list (it contains the requester's
-// contact details, so it stays private).
-//
-// settings: site name/tagline is public to read, admin-only to write.
+// Two kinds of signed-in Firebase Auth users exist in this app:
+// - Admins: accounts YOU create manually in Firebase Console -> Authentication,
+//   and then list in the "admins" collection (doc id = their auth uid) so
+//   these rules can recognize them. See README.md for the one-time setup step.
+// - Members: every visitor who registers a profile automatically gets a
+//   Firebase Auth account (a synthetic email built from their phone number +
+//   the password they chose at registration), so they can log back in later
+//   to see their own profile status and the interest requests sent/received
+//   on their profile ("member" access below, never listed in "admins").
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    function isAdmin() {
+      return request.auth != null &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    match /admins/{uid} {
+      // Members must never be able to read the admin allowlist (it would let
+      // a member confirm someone else's uid is/isn't an admin); only that
+      // exact admin (checking their own membership) or another admin can.
+      allow read: if request.auth != null && request.auth.uid == uid;
+      // Only ever set by you directly in the Firebase Console, never by the app.
+      allow write: if false;
+    }
+
     match /settings/{docId} {
       allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /counters/{docId} {
+      // Used only to atomically hand out sequential 5-digit member IDs at
+      // registration time; the value itself is never useful to read back.
+      allow read: if false;
       allow write: if request.auth != null;
     }
 
     match /profiles/{profileId} {
-      allow read: if request.auth != null || resource.data.status == 'approved';
-      allow create: if request.resource.data.status == 'pending'
+      allow read: if isAdmin()
+                  || resource.data.status == 'approved'
+                  || (request.auth != null && resource.data.ownerUid == request.auth.uid);
+      allow create: if request.auth != null
+                    && request.resource.data.ownerUid == request.auth.uid
+                    && request.resource.data.status == 'pending'
                     && request.resource.data.name is string
                     && request.resource.data.name.size() > 0
                     && request.resource.data.gender is string
                     && request.resource.data.phone is string
                     && request.resource.data.phone.size() > 0;
-      allow update, delete: if request.auth != null;
+      // A member may only edit their own profile, and never change who owns
+      // it or self-approve/reject it (status stays whatever it already was);
+      // an admin can change anything, including status and deletion.
+      allow update: if isAdmin()
+                    || (request.auth != null
+                        && resource.data.ownerUid == request.auth.uid
+                        && request.resource.data.ownerUid == resource.data.ownerUid
+                        && request.resource.data.status == resource.data.status);
+      allow delete: if isAdmin();
     }
 
     match /interests/{interestId} {
-      allow read, update, delete: if request.auth != null;
       allow create: if request.resource.data.profileId is string
                     && request.resource.data.requesterName is string
                     && request.resource.data.requesterName.size() > 0
                     && request.resource.data.requesterPhone is string
                     && request.resource.data.requesterPhone.size() > 0;
+      // Visible to: the admin, whoever sent the request (if they were logged
+      // in as a member when they sent it), and the profile owner it was sent
+      // to — nobody else.
+      allow read: if isAdmin()
+                  || (request.auth != null && resource.data.requesterUid == request.auth.uid)
+                  || (request.auth != null && resource.data.recipientUid == request.auth.uid);
+      allow update, delete: if isAdmin();
     }
 
     match /{document=**} {
