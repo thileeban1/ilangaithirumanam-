@@ -1,18 +1,43 @@
 rules_version = '2';
 
-// Students never sign in (they only enter an Access Code inside the app),
-// so reads on the "app" collection stay public — that is how the student
-// screens load grades/subjects/recordings. Writes (adding a grade, a
-// student, a recording, changing the school name, etc.) require a signed-in
-// Firebase Auth user — only accounts you create yourself in the Firebase
-// Console (Authentication -> Users -> Add user) can sign in as a teacher,
-// so only people you explicitly grant an account can write data.
+// profiles: anyone can submit a new profile (status is forced to "pending" so
+// nobody can self-approve), but only an approved profile is publicly
+// readable. Signed-in admins (accounts created by you in the Firebase
+// Console -> Authentication -> Users) can read every profile (to review the
+// pending queue) and can update/delete any profile (approve, reject, edit).
+//
+// interests: anyone can send an interest request on a profile, but only a
+// signed-in admin can read/manage the list (it contains the requester's
+// contact details, so it stays private).
+//
+// settings: site name/tagline is public to read, admin-only to write.
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /app/{docId} {
+    match /settings/{docId} {
       allow read: if true;
       allow write: if request.auth != null;
     }
+
+    match /profiles/{profileId} {
+      allow read: if request.auth != null || resource.data.status == 'approved';
+      allow create: if request.resource.data.status == 'pending'
+                    && request.resource.data.name is string
+                    && request.resource.data.name.size() > 0
+                    && request.resource.data.gender is string
+                    && request.resource.data.phone is string
+                    && request.resource.data.phone.size() > 0;
+      allow update, delete: if request.auth != null;
+    }
+
+    match /interests/{interestId} {
+      allow read, update, delete: if request.auth != null;
+      allow create: if request.resource.data.profileId is string
+                    && request.resource.data.requesterName is string
+                    && request.resource.data.requesterName.size() > 0
+                    && request.resource.data.requesterPhone is string
+                    && request.resource.data.requesterPhone.size() > 0;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
