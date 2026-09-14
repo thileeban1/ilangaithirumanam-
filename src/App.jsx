@@ -56,6 +56,36 @@ const fmtDate = (ts) => {
 const sortByCreatedDesc = (list) =>
   [...list].sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
 
+const MAX_PHOTO_DIM = 480;
+const PHOTO_JPEG_QUALITY = 0.72;
+
+const resizeImageToDataUrl = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("read failed"));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("decode failed"));
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > height && width > MAX_PHOTO_DIM) {
+          height = Math.round((height * MAX_PHOTO_DIM) / width);
+          width = MAX_PHOTO_DIM;
+        } else if (height >= width && height > MAX_PHOTO_DIM) {
+          width = Math.round((width * MAX_PHOTO_DIM) / height);
+          height = MAX_PHOTO_DIM;
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", PHOTO_JPEG_QUALITY));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
 const GENDERS = ["ஆண்", "பெண்"];
 const MARITAL_STATUSES = ["திருமணமாகாதவர்", "விவாகரத்து பெற்றவர்", "விதவை / விதவன்"];
 const RELIGIONS = ["இந்து", "கிறிஸ்தவர்", "இஸ்லாம்", "பிற"];
@@ -104,6 +134,7 @@ export default function MatrimonyApp() {
   const [registerForm, setRegisterForm] = useState(EMPTY_PROFILE);
   const [registerBusy, setRegisterBusy] = useState(false);
   const [registerDone, setRegisterDone] = useState(false);
+  const [photoUploading, setPhotoUploading] = useState(false);
 
   // browse filters
   const [filters, setFilters] = useState({ gender: "", district: "", maritalStatus: "", minAge: "", maxAge: "" });
@@ -218,6 +249,21 @@ export default function MatrimonyApp() {
   const goHome = () => {
     setError("");
     setScreen("home");
+  };
+
+  // ---------- shared: photo upload ----------
+  const handlePhotoFile = async (file, value, onChange) => {
+    if (!file) return;
+    setError("");
+    setPhotoUploading(true);
+    try {
+      const dataUrl = await resizeImageToDataUrl(file);
+      onChange({ ...value, photoUrl: dataUrl });
+    } catch (e) {
+      setError("புகைப்படத்தை சேர்க்க முடியவில்லை. வேறு படத்தை முயற்சிக்கவும்.");
+    } finally {
+      setPhotoUploading(false);
+    }
   };
 
   // ---------- public: register ----------
@@ -520,8 +566,19 @@ export default function MatrimonyApp() {
       <label style={styles.label}>தொழில்</label>
       <input style={styles.input} value={value.profession} onChange={(e) => onChange({ ...value, profession: e.target.value })} />
 
-      <label style={styles.label}>புகைப்பட இணைப்பு (URL, விருப்பம்)</label>
-      <input style={styles.input} value={value.photoUrl} onChange={(e) => onChange({ ...value, photoUrl: e.target.value })} placeholder="https://..." />
+      <label style={styles.label}>புகைப்படம் (விருப்பம்)</label>
+      {value.photoUrl && (
+        <div style={{ marginBottom: 10 }}>
+          <img src={value.photoUrl} alt="preview" style={{ width: 84, height: 84, borderRadius: 12, objectFit: "cover", border: "1px solid #263354" }} />
+        </div>
+      )}
+      <input
+        style={styles.input}
+        type="file"
+        accept="image/*"
+        onChange={(e) => handlePhotoFile(e.target.files?.[0], value, onChange)}
+      />
+      {photoUploading && <div style={{ color: "#9FB0CE", fontSize: 12.5, marginTop: -8, marginBottom: 12 }}>படத்தை சேர்க்கிறது…</div>}
 
       <label style={styles.label}>தன்னைப் பற்றி</label>
       <textarea style={styles.textarea} value={value.about} onChange={(e) => onChange({ ...value, about: e.target.value })} placeholder="குடும்பம், பொழுதுபோக்கு, எதிர்பார்ப்பு போன்றவை..." />
@@ -622,7 +679,7 @@ export default function MatrimonyApp() {
         {error && <div style={styles.errBox}>{error}</div>}
         <div style={styles.card}>
           <ProfileFormFields value={registerForm} onChange={setRegisterForm} />
-          <button style={styles.btnPrimary} onClick={handleRegisterSubmit} disabled={registerBusy}>
+          <button style={styles.btnPrimary} onClick={handleRegisterSubmit} disabled={registerBusy || photoUploading}>
             {registerBusy ? "சமர்ப்பிக்கிறது…" : "சுயவிவரத்தை சமர்ப்பிக்க"}
           </button>
         </div>
@@ -833,7 +890,7 @@ export default function MatrimonyApp() {
             <div style={{ paddingTop: 12 }}>
               <ProfileFormFields value={editDraft} onChange={setEditDraft} />
               <div style={{ display: "flex", gap: 10 }}>
-                <button style={styles.btnPrimary} onClick={saveEditProfile}>சேமிக்க</button>
+                <button style={styles.btnPrimary} onClick={saveEditProfile} disabled={photoUploading}>சேமிக்க</button>
                 <button style={styles.btnGhost} onClick={() => setEditingProfileId(null)}>ரத்து</button>
               </div>
             </div>
