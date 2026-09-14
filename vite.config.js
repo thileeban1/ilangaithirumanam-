@@ -1,10 +1,10 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-// Served from https://<user>.github.io/ilangaithirumanam-/ via GitHub Pages.
-// NOTE: if you rename the repo, update this base path to match, or the
-// built JS/CSS files will 404 even though the page itself loads.
+// Relative base so the same build works whether it's served from a subpath
+// (GitHub Pages: https://<user>.github.io/ilangaithirumanam-/) or from the
+// root of a domain (Firebase Hosting: https://<project>.web.app/).
 export default defineConfig({
   plugins: [react()],
-  base: "/ilangaithirumanam-/",
+  base: "./",
 });
