@@ -160,7 +160,7 @@ export default function MatrimonyApp() {
   const [photoUploading, setPhotoUploading] = useState(false);
 
   // member: auth + own data
-  const [isAdminUser, setIsAdminUser] = useState(false);
+  const [isAdminUser, setIsAdminUser] = useState(null); // null = still checking
   const [memberPhone, setMemberPhone] = useState("");
   const [memberPassword, setMemberPassword] = useState("");
   const [myProfile, setMyProfile] = useState(null);
@@ -1063,7 +1063,19 @@ export default function MatrimonyApp() {
 
   // ---------- MEMBER DASHBOARD ----------
   if (screen === "memberDashboard") {
-    if (!authUser || isAdminUser) {
+    if (!authUser) {
+      setScreen("memberLogin");
+      return null;
+    }
+    if (isAdminUser === null) {
+      return (
+        <div style={styles.page}>
+          <Header />
+          <div style={styles.section}><div style={styles.eyebrow}>சரிபார்க்கிறது…</div></div>
+        </div>
+      );
+    }
+    if (isAdminUser) {
       setScreen("memberLogin");
       return null;
     }
@@ -1142,7 +1154,19 @@ export default function MatrimonyApp() {
 
   // ---------- ADMIN DASHBOARD ----------
   if (screen === "admin") {
-    if (!authUser || !isAdminUser) {
+    if (!authUser) {
+      setScreen("adminLogin");
+      return null;
+    }
+    if (isAdminUser === null) {
+      return (
+        <div style={styles.page}>
+          <Header />
+          <div style={styles.section}><div style={styles.eyebrow}>சரிபார்க்கிறது…</div></div>
+        </div>
+      );
+    }
+    if (!isAdminUser) {
       setScreen("adminLogin");
       return null;
     }
