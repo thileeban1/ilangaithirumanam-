@@ -33,8 +33,12 @@ service cloud.firestore {
 
     match /counters/{docId} {
       // Used only to atomically hand out sequential 5-digit member IDs at
-      // registration time; the value itself is never useful to read back.
-      allow read: if false;
+      // registration time. assignMemberId() runs this inside a transaction,
+      // which must read the counter before it can write the next value, so
+      // read access can't be "if false" or every registration fails right
+      // after the auth account is created (denied mid-transaction) and
+      // before the profile document is ever saved.
+      allow read: if request.auth != null;
       allow write: if request.auth != null;
     }
 
