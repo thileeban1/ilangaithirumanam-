@@ -573,11 +573,6 @@ export default function MatrimonyApp() {
     setScreen(authUser && !isAdminUser ? "memberDashboard" : "memberLogin");
   };
 
-  const goBrowse = () => {
-    setError("");
-    setScreen(authUser ? "browse" : "memberLogin");
-  };
-
   const handleMemberSignIn = async () => {
     if (!memberPhone.trim() || !memberPassword.trim()) return setError("தொடர்பு எண் மற்றும் கடவுச்சொல்லை உள்ளிடவும்.");
     setAuthBusy(true);
@@ -785,9 +780,6 @@ export default function MatrimonyApp() {
           <button style={styles.roleCard} onClick={() => { setError(""); setRegisterDone(false); setScreen("register"); }}>
             <span style={{ fontSize: 26 }}>📝</span><span>சுயவிவரம் பதிவு செய்ய</span>
           </button>
-          <button style={styles.roleCard} onClick={goBrowse}>
-            <span style={{ fontSize: 26 }}>💞</span><span>சுயவிவரங்களை பார்வையிட</span>
-          </button>
           <button style={styles.roleCard} onClick={goMemberArea}>
             <span style={{ fontSize: 26 }}>👤</span><span>உறுப்பினர் / எனது Dashboard</span>
           </button>
@@ -861,7 +853,7 @@ export default function MatrimonyApp() {
     return (
       <div style={styles.page}>
         <Header siteName={settings.siteName} onAdminClick={goAdmin} />
-        <Back to="home" label="பின்செல்" onGo={goTo} />
+        <Back to="memberDashboard" label="பின்செல்" onGo={goTo} />
         <div style={styles.section}>
           <div style={styles.eyebrow}>சுயவிவரங்கள்</div>
           <h1 style={styles.h1}>பொருத்தமான துணையைத் தேடுங்கள்</h1>
@@ -1111,6 +1103,12 @@ export default function MatrimonyApp() {
         </div>
         {error && <div style={styles.errBox}>{error}</div>}
         {savedFlash && <div style={styles.flash}>{savedFlash}</div>}
+
+        <div style={styles.section}>
+          <button style={styles.roleCard} onClick={() => { setError(""); setScreen("browse"); }}>
+            <span style={{ fontSize: 26 }}>💞</span><span>சுயவிவரங்களை பார்வையிட</span>
+          </button>
+        </div>
 
         {!myProfile && (
           <div style={styles.card}>
