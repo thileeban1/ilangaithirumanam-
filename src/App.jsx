@@ -140,6 +140,156 @@ const assignMemberId = async () => {
   });
 };
 
+// ---------- styles (static, defined once) ----------
+const styles = {
+  page: { minHeight: "100vh", background: "#0B0F16", fontFamily: "'Inter','Noto Sans Tamil',sans-serif", color: "#EAF0FA", paddingBottom: 50, boxSizing: "border-box" },
+  header: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 18px", borderBottom: "1px solid #1B2436", position: "sticky", top: 0, background: "#0B0F16", zIndex: 5, gap: 10 },
+  brandBox: { background: "#F4F1EA", color: "#0B0F16", borderRadius: 8, padding: "8px 14px", fontFamily: "'Fraunces',serif", fontWeight: 700, fontSize: 14, maxWidth: 190, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
+  pill: { border: "1.5px solid #3A4A6B", color: "#AEBEDD", borderRadius: 999, padding: "7px 16px", fontSize: 12.5, fontFamily: "'IBM Plex Mono',monospace", whiteSpace: "nowrap" },
+  banner: { margin: "18px 18px 0", borderRadius: 16, padding: "26px 22px", background: "linear-gradient(135deg,#5C1E3A 0%,#3A1030 60%,#1F0A22 100%)", border: "1px solid #6E2B4E" },
+  eyebrow: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 11.5, letterSpacing: "0.16em", color: "#F2A93B", textTransform: "uppercase", marginBottom: 8 },
+  h1: { fontFamily: "'Fraunces',serif", fontWeight: 600, fontSize: 25, lineHeight: 1.25, margin: "0 0 8px", color: "#F6F8FC", textWrap: "balance" },
+  h2: { fontFamily: "'Fraunces',serif", fontWeight: 600, fontSize: 18, margin: "0 0 4px", color: "#F6F8FC" },
+  sub: { color: "#D9B8CC", fontSize: 14, lineHeight: 1.55, margin: 0 },
+  section: { padding: "22px 18px 0" },
+  sectionTitle: { fontFamily: "'Fraunces',serif", fontSize: 19, fontWeight: 600, margin: "0 0 14px", color: "#F6F8FC" },
+  roleCard: { display: "flex", alignItems: "center", gap: 14, width: "100%", textAlign: "left", padding: "18px", borderRadius: 16, border: "1px solid #6E2B4E", background: "linear-gradient(160deg,#5C1E3A 0%,#2A0E24 100%)", color: "#F6F8FC", marginBottom: 14, cursor: "pointer", fontSize: 16.5, fontFamily: "'Fraunces',serif" },
+  card: { background: "#111A2C", border: "1px solid #1E2A44", borderRadius: 16, padding: "20px", margin: "0 18px 16px" },
+  label: { fontSize: 13, color: "#8FA0C2", display: "block", marginBottom: 8, fontWeight: 600 },
+  input: { width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 10, border: "1.5px solid #263354", background: "#0B1220", color: "#EAF0FA", fontSize: 14.5, marginBottom: 12, fontFamily: "inherit" },
+  textarea: { width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 10, border: "1.5px solid #263354", background: "#0B1220", color: "#EAF0FA", fontSize: 14.5, marginBottom: 12, fontFamily: "inherit", minHeight: 90, resize: "vertical" },
+  btnPrimary: { width: "100%", padding: "13px 16px", borderRadius: 999, border: "none", background: "#C23B6B", color: "#fff", fontSize: 14.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" },
+  btnGhost: { width: "100%", padding: "12px 16px", borderRadius: 999, border: "1.5px solid #C23B6B", background: "transparent", color: "#F0A9C4", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" },
+  row: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: "1px solid #1E2A44" },
+  linkBtn: { color: "#F0A9C4", background: "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, padding: 0, fontFamily: "inherit" },
+  dangerBtn: { color: "#E4677E", background: "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, padding: 0, fontFamily: "inherit" },
+  okBtn: { color: "#8ADB9A", background: "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, padding: 0, fontFamily: "inherit" },
+  errBox: { background: "#3A1620", border: "1px solid #C0435A", color: "#FFC9D2", padding: "11px 14px", borderRadius: 10, fontSize: 13.5, margin: "0 18px 16px" },
+  flash: { background: "#1A2E17", border: "1px solid #4E8A3E", color: "#C9F2BC", padding: "9px 14px", borderRadius: 10, fontSize: 13, margin: "0 18px 16px" },
+  backBar: { background: "none", border: "none", color: "#7C8CAE", fontSize: 13, cursor: "pointer", padding: "14px 18px 0", fontFamily: "'IBM Plex Mono',monospace", display: "block" },
+  profileCard: { background: "#111A2C", border: "1px solid #1E2A44", borderRadius: 14, padding: "16px", margin: "0 18px 12px", display: "flex", gap: 14, alignItems: "center", cursor: "pointer", textAlign: "left", width: "calc(100% - 36px)" },
+  avatar: { width: 56, height: 56, borderRadius: "50%", background: "linear-gradient(160deg,#5C1E3A,#2A0E24)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0, overflow: "hidden", border: "1px solid #6E2B4E" },
+  tabBar: { display: "flex", gap: 8, overflowX: "auto", padding: "0 18px 14px" },
+  tabBtn: (active) => ({
+    padding: "9px 16px",
+    borderRadius: 999,
+    border: active ? "1.5px solid #C23B6B" : "1.5px solid #263354",
+    background: active ? "#3A1030" : "transparent",
+    color: active ? "#F0A9C4" : "#8FA0C2",
+    fontSize: 13,
+    fontWeight: 700,
+    cursor: "pointer",
+    fontFamily: "inherit",
+    whiteSpace: "nowrap",
+  }),
+  badge: { fontSize: 11, fontFamily: "'IBM Plex Mono',monospace", color: "#F2A93B", background: "#241B0D", border: "1px solid #4A3A17", padding: "3px 8px", borderRadius: 6 },
+  infoGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 14px", margin: "12px 0" },
+  infoLabel: { fontSize: 11.5, color: "#7C8CAE", textTransform: "uppercase", letterSpacing: "0.05em" },
+  infoValue: { fontSize: 14, color: "#EAF0FA", marginBottom: 6 },
+};
+
+// ---------- shared components (top-level, so typing in their inputs never
+// remounts them and loses focus — these must NEVER be defined inside
+// MatrimonyApp's render body) ----------
+function Header({ siteName, onAdminClick }) {
+  return (
+    <div style={styles.header}>
+      <div style={styles.brandBox}>{siteName}</div>
+      <div style={{ display: "flex", gap: 8 }}>
+        <button style={styles.pill} onClick={onAdminClick}>நிர்வாகி</button>
+      </div>
+    </div>
+  );
+}
+
+function Back({ to, label, logout, onGo }) {
+  return (
+    <button style={styles.backBar} onClick={() => onGo(to, logout)}>
+      ← {label}
+    </button>
+  );
+}
+
+function ProfileFormFields({ value, onChange, onPhotoFile, photoUploading }) {
+  return (
+    <>
+      <label style={styles.label}>பெயர் *</label>
+      <input style={styles.input} value={value.name} onChange={(e) => onChange({ ...value, name: e.target.value })} placeholder="முழுப் பெயர்" />
+
+      <label style={styles.label}>பாலினம் *</label>
+      <select style={styles.input} value={value.gender} onChange={(e) => onChange({ ...value, gender: e.target.value })}>
+        <option value="">தேர்ந்தெடுக்கவும்</option>
+        {GENDERS.map((g) => (
+          <option key={g} value={g}>{g}</option>
+        ))}
+      </select>
+
+      <label style={styles.label}>பிறந்த தேதி *</label>
+      <input style={styles.input} type="date" max={todayStr()} value={value.dob} onChange={(e) => onChange({ ...value, dob: e.target.value })} />
+
+      <label style={styles.label}>உயரம் (எ.கா. 5'6")</label>
+      <input style={styles.input} value={value.height} onChange={(e) => onChange({ ...value, height: e.target.value })} placeholder="5'6&quot;" />
+
+      <label style={styles.label}>மதம்</label>
+      <select style={styles.input} value={value.religion} onChange={(e) => onChange({ ...value, religion: e.target.value })}>
+        <option value="">தேர்ந்தெடுக்கவும்</option>
+        {RELIGIONS.map((r) => (
+          <option key={r} value={r}>{r}</option>
+        ))}
+      </select>
+
+      <label style={styles.label}>ஜாதி (விருப்பம்)</label>
+      <input style={styles.input} value={value.caste} onChange={(e) => onChange({ ...value, caste: e.target.value })} />
+
+      <label style={styles.label}>தாய்மொழி</label>
+      <input style={styles.input} value={value.motherTongue} onChange={(e) => onChange({ ...value, motherTongue: e.target.value })} />
+
+      <label style={styles.label}>நாடு</label>
+      <input style={styles.input} value={value.country} onChange={(e) => onChange({ ...value, country: e.target.value })} />
+
+      <label style={styles.label}>மாவட்டம் / வசிக்கும் இடம்</label>
+      <input style={styles.input} value={value.district} onChange={(e) => onChange({ ...value, district: e.target.value })} placeholder="எ.கா. யாழ்ப்பாணம்" />
+
+      <label style={styles.label}>திருமண நிலை</label>
+      <select style={styles.input} value={value.maritalStatus} onChange={(e) => onChange({ ...value, maritalStatus: e.target.value })}>
+        <option value="">தேர்ந்தெடுக்கவும்</option>
+        {MARITAL_STATUSES.map((m) => (
+          <option key={m} value={m}>{m}</option>
+        ))}
+      </select>
+
+      <label style={styles.label}>கல்வித் தகுதி</label>
+      <input style={styles.input} value={value.education} onChange={(e) => onChange({ ...value, education: e.target.value })} />
+
+      <label style={styles.label}>தொழில்</label>
+      <input style={styles.input} value={value.profession} onChange={(e) => onChange({ ...value, profession: e.target.value })} />
+
+      <label style={styles.label}>புகைப்படம் (விருப்பம்)</label>
+      {value.photoUrl && (
+        <div style={{ marginBottom: 10 }}>
+          <img src={value.photoUrl} alt="preview" style={{ width: 84, height: 84, borderRadius: 12, objectFit: "cover", border: "1px solid #263354" }} />
+        </div>
+      )}
+      <input
+        style={styles.input}
+        type="file"
+        accept="image/*"
+        onChange={(e) => onPhotoFile(e.target.files?.[0], value, onChange)}
+      />
+      {photoUploading && <div style={{ color: "#9FB0CE", fontSize: 12.5, marginTop: -8, marginBottom: 12 }}>படத்தை சேர்க்கிறது…</div>}
+
+      <label style={styles.label}>தன்னைப் பற்றி</label>
+      <textarea style={styles.textarea} value={value.about} onChange={(e) => onChange({ ...value, about: e.target.value })} placeholder="குடும்பம், பொழுதுபோக்கு, எதிர்பார்ப்பு போன்றவை..." />
+
+      <label style={styles.label}>தொடர்பு எண் *</label>
+      <input style={styles.input} value={value.phone} onChange={(e) => onChange({ ...value, phone: e.target.value })} placeholder="+94 7X XXX XXXX" />
+
+      <label style={styles.label}>மின்னஞ்சல் (விருப்பம்)</label>
+      <input style={styles.input} type="email" value={value.email} onChange={(e) => onChange({ ...value, email: e.target.value })} />
+    </>
+  );
+}
+
 export default function MatrimonyApp() {
   const [screen, setScreen] = useState("home"); // home | register | browse | profile | adminLogin | admin
   const [loading, setLoading] = useState(true);
@@ -579,160 +729,18 @@ export default function MatrimonyApp() {
   const rejectedProfiles = useMemo(() => allProfiles.filter((p) => p.status === "rejected"), [allProfiles]);
   const selectedProfile = approvedProfiles.find((p) => p.id === selectedProfileId) || null;
 
-  // ---------- styles ----------
-  const styles = {
-    page: { minHeight: "100vh", background: "#0B0F16", fontFamily: "'Inter','Noto Sans Tamil',sans-serif", color: "#EAF0FA", paddingBottom: 50, boxSizing: "border-box" },
-    header: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 18px", borderBottom: "1px solid #1B2436", position: "sticky", top: 0, background: "#0B0F16", zIndex: 5, gap: 10 },
-    brandBox: { background: "#F4F1EA", color: "#0B0F16", borderRadius: 8, padding: "8px 14px", fontFamily: "'Fraunces',serif", fontWeight: 700, fontSize: 14, maxWidth: 190, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
-    pill: { border: "1.5px solid #3A4A6B", color: "#AEBEDD", borderRadius: 999, padding: "7px 16px", fontSize: 12.5, fontFamily: "'IBM Plex Mono',monospace", whiteSpace: "nowrap" },
-    banner: { margin: "18px 18px 0", borderRadius: 16, padding: "26px 22px", background: "linear-gradient(135deg,#5C1E3A 0%,#3A1030 60%,#1F0A22 100%)", border: "1px solid #6E2B4E" },
-    eyebrow: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 11.5, letterSpacing: "0.16em", color: "#F2A93B", textTransform: "uppercase", marginBottom: 8 },
-    h1: { fontFamily: "'Fraunces',serif", fontWeight: 600, fontSize: 25, lineHeight: 1.25, margin: "0 0 8px", color: "#F6F8FC", textWrap: "balance" },
-    h2: { fontFamily: "'Fraunces',serif", fontWeight: 600, fontSize: 18, margin: "0 0 4px", color: "#F6F8FC" },
-    sub: { color: "#D9B8CC", fontSize: 14, lineHeight: 1.55, margin: 0 },
-    section: { padding: "22px 18px 0" },
-    sectionTitle: { fontFamily: "'Fraunces',serif", fontSize: 19, fontWeight: 600, margin: "0 0 14px", color: "#F6F8FC" },
-    roleCard: { display: "flex", alignItems: "center", gap: 14, width: "100%", textAlign: "left", padding: "18px", borderRadius: 16, border: "1px solid #6E2B4E", background: "linear-gradient(160deg,#5C1E3A 0%,#2A0E24 100%)", color: "#F6F8FC", marginBottom: 14, cursor: "pointer", fontSize: 16.5, fontFamily: "'Fraunces',serif" },
-    card: { background: "#111A2C", border: "1px solid #1E2A44", borderRadius: 16, padding: "20px", margin: "0 18px 16px" },
-    label: { fontSize: 13, color: "#8FA0C2", display: "block", marginBottom: 8, fontWeight: 600 },
-    input: { width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 10, border: "1.5px solid #263354", background: "#0B1220", color: "#EAF0FA", fontSize: 14.5, marginBottom: 12, fontFamily: "inherit" },
-    textarea: { width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 10, border: "1.5px solid #263354", background: "#0B1220", color: "#EAF0FA", fontSize: 14.5, marginBottom: 12, fontFamily: "inherit", minHeight: 90, resize: "vertical" },
-    btnPrimary: { width: "100%", padding: "13px 16px", borderRadius: 999, border: "none", background: "#C23B6B", color: "#fff", fontSize: 14.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" },
-    btnGhost: { width: "100%", padding: "12px 16px", borderRadius: 999, border: "1.5px solid #C23B6B", background: "transparent", color: "#F0A9C4", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" },
-    row: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: "1px solid #1E2A44" },
-    linkBtn: { color: "#F0A9C4", background: "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, padding: 0, fontFamily: "inherit" },
-    dangerBtn: { color: "#E4677E", background: "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, padding: 0, fontFamily: "inherit" },
-    okBtn: { color: "#8ADB9A", background: "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, padding: 0, fontFamily: "inherit" },
-    errBox: { background: "#3A1620", border: "1px solid #C0435A", color: "#FFC9D2", padding: "11px 14px", borderRadius: 10, fontSize: 13.5, margin: "0 18px 16px" },
-    flash: { background: "#1A2E17", border: "1px solid #4E8A3E", color: "#C9F2BC", padding: "9px 14px", borderRadius: 10, fontSize: 13, margin: "0 18px 16px" },
-    backBar: { background: "none", border: "none", color: "#7C8CAE", fontSize: 13, cursor: "pointer", padding: "14px 18px 0", fontFamily: "'IBM Plex Mono',monospace", display: "block" },
-    profileCard: { background: "#111A2C", border: "1px solid #1E2A44", borderRadius: 14, padding: "16px", margin: "0 18px 12px", display: "flex", gap: 14, alignItems: "center", cursor: "pointer", textAlign: "left", width: "calc(100% - 36px)" },
-    avatar: { width: 56, height: 56, borderRadius: "50%", background: "linear-gradient(160deg,#5C1E3A,#2A0E24)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0, overflow: "hidden", border: "1px solid #6E2B4E" },
-    tabBar: { display: "flex", gap: 8, overflowX: "auto", padding: "0 18px 14px" },
-    tabBtn: (active) => ({
-      padding: "9px 16px",
-      borderRadius: 999,
-      border: active ? "1.5px solid #C23B6B" : "1.5px solid #263354",
-      background: active ? "#3A1030" : "transparent",
-      color: active ? "#F0A9C4" : "#8FA0C2",
-      fontSize: 13,
-      fontWeight: 700,
-      cursor: "pointer",
-      fontFamily: "inherit",
-      whiteSpace: "nowrap",
-    }),
-    badge: { fontSize: 11, fontFamily: "'IBM Plex Mono',monospace", color: "#F2A93B", background: "#241B0D", border: "1px solid #4A3A17", padding: "3px 8px", borderRadius: 6 },
-    infoGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 14px", margin: "12px 0" },
-    infoLabel: { fontSize: 11.5, color: "#7C8CAE", textTransform: "uppercase", letterSpacing: "0.05em" },
-    infoValue: { fontSize: 14, color: "#EAF0FA", marginBottom: 6 },
+  const goTo = (screen, logout) => {
+    setError("");
+    setPassInput("");
+    setResetSent(false);
+    if (logout) handleLogout();
+    setScreen(screen);
   };
-
-  const Header = () => (
-    <div style={styles.header}>
-      <div style={styles.brandBox}>{settings.siteName}</div>
-      <div style={{ display: "flex", gap: 8 }}>
-        <button style={styles.pill} onClick={goAdmin}>நிர்வாகி</button>
-      </div>
-    </div>
-  );
-
-  const Back = ({ to, label, logout }) => (
-    <button
-      style={styles.backBar}
-      onClick={() => {
-        setError("");
-        setPassInput("");
-        setResetSent(false);
-        if (logout) handleLogout();
-        setScreen(to);
-      }}
-    >
-      ← {label}
-    </button>
-  );
-
-  const ProfileFormFields = ({ value, onChange }) => (
-    <>
-      <label style={styles.label}>பெயர் *</label>
-      <input style={styles.input} value={value.name} onChange={(e) => onChange({ ...value, name: e.target.value })} placeholder="முழுப் பெயர்" />
-
-      <label style={styles.label}>பாலினம் *</label>
-      <select style={styles.input} value={value.gender} onChange={(e) => onChange({ ...value, gender: e.target.value })}>
-        <option value="">தேர்ந்தெடுக்கவும்</option>
-        {GENDERS.map((g) => (
-          <option key={g} value={g}>{g}</option>
-        ))}
-      </select>
-
-      <label style={styles.label}>பிறந்த தேதி *</label>
-      <input style={styles.input} type="date" max={todayStr()} value={value.dob} onChange={(e) => onChange({ ...value, dob: e.target.value })} />
-
-      <label style={styles.label}>உயரம் (எ.கா. 5'6")</label>
-      <input style={styles.input} value={value.height} onChange={(e) => onChange({ ...value, height: e.target.value })} placeholder="5'6&quot;" />
-
-      <label style={styles.label}>மதம்</label>
-      <select style={styles.input} value={value.religion} onChange={(e) => onChange({ ...value, religion: e.target.value })}>
-        <option value="">தேர்ந்தெடுக்கவும்</option>
-        {RELIGIONS.map((r) => (
-          <option key={r} value={r}>{r}</option>
-        ))}
-      </select>
-
-      <label style={styles.label}>ஜாதி (விருப்பம்)</label>
-      <input style={styles.input} value={value.caste} onChange={(e) => onChange({ ...value, caste: e.target.value })} />
-
-      <label style={styles.label}>தாய்மொழி</label>
-      <input style={styles.input} value={value.motherTongue} onChange={(e) => onChange({ ...value, motherTongue: e.target.value })} />
-
-      <label style={styles.label}>நாடு</label>
-      <input style={styles.input} value={value.country} onChange={(e) => onChange({ ...value, country: e.target.value })} />
-
-      <label style={styles.label}>மாவட்டம் / வசிக்கும் இடம்</label>
-      <input style={styles.input} value={value.district} onChange={(e) => onChange({ ...value, district: e.target.value })} placeholder="எ.கா. யாழ்ப்பாணம்" />
-
-      <label style={styles.label}>திருமண நிலை</label>
-      <select style={styles.input} value={value.maritalStatus} onChange={(e) => onChange({ ...value, maritalStatus: e.target.value })}>
-        <option value="">தேர்ந்தெடுக்கவும்</option>
-        {MARITAL_STATUSES.map((m) => (
-          <option key={m} value={m}>{m}</option>
-        ))}
-      </select>
-
-      <label style={styles.label}>கல்வித் தகுதி</label>
-      <input style={styles.input} value={value.education} onChange={(e) => onChange({ ...value, education: e.target.value })} />
-
-      <label style={styles.label}>தொழில்</label>
-      <input style={styles.input} value={value.profession} onChange={(e) => onChange({ ...value, profession: e.target.value })} />
-
-      <label style={styles.label}>புகைப்படம் (விருப்பம்)</label>
-      {value.photoUrl && (
-        <div style={{ marginBottom: 10 }}>
-          <img src={value.photoUrl} alt="preview" style={{ width: 84, height: 84, borderRadius: 12, objectFit: "cover", border: "1px solid #263354" }} />
-        </div>
-      )}
-      <input
-        style={styles.input}
-        type="file"
-        accept="image/*"
-        onChange={(e) => handlePhotoFile(e.target.files?.[0], value, onChange)}
-      />
-      {photoUploading && <div style={{ color: "#9FB0CE", fontSize: 12.5, marginTop: -8, marginBottom: 12 }}>படத்தை சேர்க்கிறது…</div>}
-
-      <label style={styles.label}>தன்னைப் பற்றி</label>
-      <textarea style={styles.textarea} value={value.about} onChange={(e) => onChange({ ...value, about: e.target.value })} placeholder="குடும்பம், பொழுதுபோக்கு, எதிர்பார்ப்பு போன்றவை..." />
-
-      <label style={styles.label}>தொடர்பு எண் *</label>
-      <input style={styles.input} value={value.phone} onChange={(e) => onChange({ ...value, phone: e.target.value })} placeholder="+94 7X XXX XXXX" />
-
-      <label style={styles.label}>மின்னஞ்சல் (விருப்பம்)</label>
-      <input style={styles.input} type="email" value={value.email} onChange={(e) => onChange({ ...value, email: e.target.value })} />
-    </>
-  );
 
   if (!firebaseConfigured) {
     return (
       <div style={styles.page}>
-        <Header />
+        <Header siteName={settings.siteName} onAdminClick={goAdmin} />
         <div style={styles.section}>
           <div style={styles.eyebrow}>Setup தேவை</div>
           <h1 style={styles.h1}>Firebase இணைக்கப்படவில்லை</h1>
@@ -751,7 +759,7 @@ export default function MatrimonyApp() {
   if (loading || !authReady) {
     return (
       <div style={styles.page}>
-        <Header />
+        <Header siteName={settings.siteName} onAdminClick={goAdmin} />
         <div style={styles.section}><div style={styles.eyebrow}>ஏற்றுகிறது…</div></div>
       </div>
     );
@@ -761,7 +769,7 @@ export default function MatrimonyApp() {
   if (screen === "home") {
     return (
       <div style={styles.page}>
-        <Header />
+        <Header siteName={settings.siteName} onAdminClick={goAdmin} />
         <div style={styles.banner}>
           <div style={styles.eyebrow}>வரவேற்கிறோம்</div>
           <h1 style={styles.h1}>{settings.siteName}</h1>
@@ -795,8 +803,8 @@ export default function MatrimonyApp() {
     if (registerDone) {
       return (
         <div style={styles.page}>
-          <Header />
-          <Back to="home" label="முகப்புக்கு" />
+          <Header siteName={settings.siteName} onAdminClick={goAdmin} />
+          <Back to="home" label="முகப்புக்கு" onGo={goTo} />
           <div style={styles.section}>
             <div style={styles.eyebrow}>நன்றி</div>
             <h1 style={styles.h1}>உங்கள் சுயவிவரம் பதிவு செய்யப்பட்டது</h1>
@@ -818,15 +826,15 @@ export default function MatrimonyApp() {
     }
     return (
       <div style={styles.page}>
-        <Header />
-        <Back to="home" label="பின்செல்" />
+        <Header siteName={settings.siteName} onAdminClick={goAdmin} />
+        <Back to="home" label="பின்செல்" onGo={goTo} />
         <div style={styles.section}>
           <div style={styles.eyebrow}>சுயவிவரம் பதிவு</div>
           <h1 style={styles.h1}>உங்கள் விவரங்களை உள்ளிடவும்</h1>
         </div>
         {error && <div style={styles.errBox}>{error}</div>}
         <div style={styles.card}>
-          <ProfileFormFields value={registerForm} onChange={setRegisterForm} />
+          <ProfileFormFields value={registerForm} onChange={setRegisterForm} onPhotoFile={handlePhotoFile} photoUploading={photoUploading} />
           <label style={styles.label}>கடவுச்சொல் * (login-க்கு பயன்படும்)</label>
           <input style={styles.input} type="password" value={registerPassword} onChange={(e) => setRegisterPassword(e.target.value)} placeholder="குறைந்தது 6 எழுத்துகள்" />
           <label style={styles.label}>கடவுச்சொல் மீண்டும் *</label>
@@ -843,8 +851,8 @@ export default function MatrimonyApp() {
   if (screen === "browse") {
     return (
       <div style={styles.page}>
-        <Header />
-        <Back to="home" label="பின்செல்" />
+        <Header siteName={settings.siteName} onAdminClick={goAdmin} />
+        <Back to="home" label="பின்செல்" onGo={goTo} />
         <div style={styles.section}>
           <div style={styles.eyebrow}>சுயவிவரங்கள்</div>
           <h1 style={styles.h1}>பொருத்தமான துணையைத் தேடுங்கள்</h1>
@@ -910,8 +918,8 @@ export default function MatrimonyApp() {
     const age = calcAge(p.dob);
     return (
       <div style={styles.page}>
-        <Header />
-        <Back to="browse" label="பின்செல்" />
+        <Header siteName={settings.siteName} onAdminClick={goAdmin} />
+        <Back to="browse" label="பின்செல்" onGo={goTo} />
         <div style={styles.section}>
           <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
             <div style={{ ...styles.avatar, width: 84, height: 84, fontSize: 34 }}>
@@ -976,8 +984,8 @@ export default function MatrimonyApp() {
   if (screen === "adminLogin") {
     return (
       <div style={styles.page}>
-        <Header />
-        <Back to="home" label="பின்செல்" />
+        <Header siteName={settings.siteName} onAdminClick={goAdmin} />
+        <Back to="home" label="பின்செல்" onGo={goTo} />
         <div style={styles.section}>
           <div style={styles.eyebrow}>நிர்வாகி நுழைவு</div>
           <h1 style={styles.h1}>உங்கள் கணக்கில் உள்நுழையவும்</h1>
@@ -1021,8 +1029,8 @@ export default function MatrimonyApp() {
   if (screen === "memberLogin") {
     return (
       <div style={styles.page}>
-        <Header />
-        <Back to="home" label="பின்செல்" />
+        <Header siteName={settings.siteName} onAdminClick={goAdmin} />
+        <Back to="home" label="பின்செல்" onGo={goTo} />
         <div style={styles.section}>
           <div style={styles.eyebrow}>உறுப்பினர் நுழைவு</div>
           <h1 style={styles.h1}>உங்கள் Dashboard-க்கு உள்நுழையவும்</h1>
@@ -1070,7 +1078,7 @@ export default function MatrimonyApp() {
     if (isAdminUser === null) {
       return (
         <div style={styles.page}>
-          <Header />
+          <Header siteName={settings.siteName} onAdminClick={goAdmin} />
           <div style={styles.section}><div style={styles.eyebrow}>சரிபார்க்கிறது…</div></div>
         </div>
       );
@@ -1082,8 +1090,8 @@ export default function MatrimonyApp() {
     const age = myProfile ? calcAge(myProfile.dob) : null;
     return (
       <div style={styles.page}>
-        <Header />
-        <Back to="home" label="வெளியேறு" logout />
+        <Header siteName={settings.siteName} onAdminClick={goAdmin} />
+        <Back to="home" label="வெளியேறு" logout onGo={goTo} />
         <div style={styles.section}>
           <div style={styles.eyebrow}>எனது Dashboard</div>
           <h1 style={styles.h1}>{myProfile ? myProfile.name : "உங்கள் கணக்கு"}</h1>
@@ -1111,7 +1119,7 @@ export default function MatrimonyApp() {
 
         {myProfile && editingMyProfile && (
           <div style={styles.card}>
-            <ProfileFormFields value={myEditDraft} onChange={setMyEditDraft} />
+            <ProfileFormFields value={myEditDraft} onChange={setMyEditDraft} onPhotoFile={handlePhotoFile} photoUploading={photoUploading} />
             <div style={{ display: "flex", gap: 10 }}>
               <button style={styles.btnPrimary} onClick={saveMyProfile} disabled={photoUploading}>சேமிக்க</button>
               <button style={styles.btnGhost} onClick={() => setEditingMyProfile(false)}>ரத்து</button>
@@ -1161,7 +1169,7 @@ export default function MatrimonyApp() {
     if (isAdminUser === null) {
       return (
         <div style={styles.page}>
-          <Header />
+          <Header siteName={settings.siteName} onAdminClick={goAdmin} />
           <div style={styles.section}><div style={styles.eyebrow}>சரிபார்க்கிறது…</div></div>
         </div>
       );
@@ -1187,7 +1195,7 @@ export default function MatrimonyApp() {
           </div>
           {isEditing && (
             <div style={{ paddingTop: 12 }}>
-              <ProfileFormFields value={editDraft} onChange={setEditDraft} />
+              <ProfileFormFields value={editDraft} onChange={setEditDraft} onPhotoFile={handlePhotoFile} photoUploading={photoUploading} />
               <div style={{ display: "flex", gap: 10 }}>
                 <button style={styles.btnPrimary} onClick={saveEditProfile} disabled={photoUploading}>சேமிக்க</button>
                 <button style={styles.btnGhost} onClick={() => setEditingProfileId(null)}>ரத்து</button>
@@ -1200,8 +1208,8 @@ export default function MatrimonyApp() {
 
     return (
       <div style={styles.page}>
-        <Header />
-        <Back to="home" label="வெளியேறு" logout />
+        <Header siteName={settings.siteName} onAdminClick={goAdmin} />
+        <Back to="home" label="வெளியேறு" logout onGo={goTo} />
         <div style={styles.section}>
           <div style={styles.eyebrow}>நிர்வாகி பலகை</div>
           <h1 style={styles.h1}>சுயவிவரங்களை நிர்வகிக்கவும்</h1>
