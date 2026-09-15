@@ -1,14 +1,21 @@
 rules_version = '2';
 
-// Two kinds of signed-in Firebase Auth users exist in this app:
+// Three kinds of signed-in Firebase Auth users exist in this app:
 // - Admins: accounts YOU create manually in Firebase Console -> Authentication,
-//   and then list in the "admins" collection (doc id = their auth uid) so
-//   these rules can recognize them. See README.md for the one-time setup step.
+//   then list in the "admins" collection (doc id = their auth uid).
 // - Members: every visitor who registers a profile automatically gets a
-//   Firebase Auth account (a synthetic email built from their phone number +
-//   the password they chose at registration), so they can log back in later
-//   to see their own profile status and the interest requests sent/received
-//   on their profile ("member" access below, never listed in "admins").
+//   Firebase Auth account (synthetic email from their phone + the password
+//   they chose), so they can log back in to see their own status, edit
+//   their profile, manage their package, and unlock other profiles.
+//
+// Each profile's identity-revealing fields are split into two separate
+// documents so access to them can be granted independently and enforced by
+// these rules (not just hidden in the UI):
+//   profiles/{id}/private/identity -> { name, photoUrl }   (a "photo unlock")
+//   profiles/{id}/private/contact  -> { phone, email }     (a "phone unlock")
+// Everything else (age/dob, district, religion, etc. - the "meters") stays
+// on the profiles/{id} document itself and is visible to any signed-in
+// member once the profile is approved.
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -17,12 +24,15 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
+    // Lets an admin list every profile's private/identity + private/contact
+    // doc in one collectionGroup query (for reviewing registrations and
+    // managing packages) without needing to open each profile individually.
+    match /{path=**}/private/{doc} {
+      allow read: if isAdmin();
+    }
+
     match /admins/{uid} {
-      // Members must never be able to read the admin allowlist (it would let
-      // a member confirm someone else's uid is/isn't an admin); only that
-      // exact admin (checking their own membership) or another admin can.
       allow read: if request.auth != null && request.auth.uid == uid;
-      // Only ever set by you directly in the Firebase Console, never by the app.
       allow write: if false;
     }
 
@@ -32,8 +42,6 @@ service cloud.firestore {
     }
 
     match /counters/{docId} {
-      // Used only to atomically hand out sequential 5-digit member IDs at
-      // registration time; the value itself is never useful to read back.
       allow read: if false;
       allow write: if request.auth != null;
     }
@@ -45,19 +53,55 @@ service cloud.firestore {
       allow create: if request.auth != null
                     && request.resource.data.ownerUid == request.auth.uid
                     && request.resource.data.status == 'pending'
-                    && request.resource.data.name is string
-                    && request.resource.data.name.size() > 0
                     && request.resource.data.gender is string
-                    && request.resource.data.phone is string
-                    && request.resource.data.phone.size() > 0;
-      // A member may only edit their own profile, and never change who owns
-      // it or self-approve/reject it (status stays whatever it already was);
-      // an admin can change anything, including status and deletion.
+                    && request.resource.data.gender.size() > 0;
+      // A member may edit their own profile's meters, but never change who
+      // owns it or self-approve/reject it; an admin can change anything.
       allow update: if isAdmin()
                     || (request.auth != null
                         && resource.data.ownerUid == request.auth.uid
                         && request.resource.data.ownerUid == resource.data.ownerUid
                         && request.resource.data.status == resource.data.status);
+      allow delete: if isAdmin();
+
+      match /private/{doc} {
+        // Direct (non-collectionGroup) reads: the admin rule above already
+        // covers admins; this adds the owner (always) and any member who
+        // has spent a credit unlocking this specific profile's photo/phone.
+        allow read: if isAdmin()
+                    || (request.auth != null && get(/databases/$(database)/documents/profiles/$(profileId)).data.ownerUid == request.auth.uid)
+                    || (doc == 'identity' && request.auth != null
+                        && exists(/databases/$(database)/documents/members/$(request.auth.uid))
+                        && profileId in get(/databases/$(database)/documents/members/$(request.auth.uid)).data.unlockedPhotoIds)
+                    || (doc == 'contact' && request.auth != null
+                        && exists(/databases/$(database)/documents/members/$(request.auth.uid))
+                        && profileId in get(/databases/$(database)/documents/members/$(request.auth.uid)).data.unlockedPhoneIds);
+        allow write: if isAdmin()
+                     || (request.auth != null && get(/databases/$(database)/documents/profiles/$(profileId)).data.ownerUid == request.auth.uid);
+      }
+    }
+
+    match /members/{uid} {
+      allow read: if request.auth != null && (request.auth.uid == uid || isAdmin());
+      // Created once at registration with everything zeroed out — a member
+      // can never hand themselves quota by writing their own doc.
+      allow create: if request.auth != null && request.auth.uid == uid
+                    && request.resource.data.package == null
+                    && request.resource.data.photoQuota == 0
+                    && request.resource.data.phoneQuota == 0
+                    && request.resource.data.photoQuotaUsed == 0
+                    && request.resource.data.phoneQuotaUsed == 0;
+      // A member can spend their own credits (unlockedPhotoIds/unlockedPhoneIds,
+      // photoQuotaUsed/phoneQuotaUsed going up) but can never grant themselves
+      // a package or more quota — only an admin can touch those fields, and
+      // "used" can only move up to the already-granted total.
+      allow update: if isAdmin()
+                    || (request.auth != null && request.auth.uid == uid
+                        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['package', 'packageExpiresAt', 'photoQuota', 'phoneQuota'])
+                        && request.resource.data.photoQuotaUsed >= resource.data.photoQuotaUsed
+                        && request.resource.data.phoneQuotaUsed >= resource.data.phoneQuotaUsed
+                        && request.resource.data.photoQuotaUsed <= resource.data.photoQuota
+                        && request.resource.data.phoneQuotaUsed <= resource.data.phoneQuota);
       allow delete: if isAdmin();
     }
 
@@ -67,9 +111,8 @@ service cloud.firestore {
                     && request.resource.data.requesterName.size() > 0
                     && request.resource.data.requesterPhone is string
                     && request.resource.data.requesterPhone.size() > 0;
-      // Visible to: the admin, whoever sent the request (if they were logged
-      // in as a member when they sent it), and the profile owner it was sent
-      // to — nobody else.
+      // Visible to: the admin, whoever sent the request (if logged in when
+      // they sent it), and the profile owner it was sent to — nobody else.
       allow read: if isAdmin()
                   || (request.auth != null && resource.data.requesterUid == request.auth.uid)
                   || (request.auth != null && resource.data.recipientUid == request.auth.uid);
