@@ -92,11 +92,21 @@ const resizeImageToDataUrl = (file) =>
 const GENDERS = ["ஆண்", "பெண்"];
 const MARITAL_STATUSES = ["திருமணமாகாதவர்", "விவாகரத்து பெற்றவர்", "விதவை / விதவன்"];
 const RELIGIONS = ["இந்து", "கிறிஸ்தவர்", "இஸ்லாம்", "பிற"];
+const RASIS = ["மேஷம்", "ரிஷபம்", "மிதுனம்", "கடகம்", "சிம்மம்", "கன்னி", "துலாம்", "விருச்சிகம்", "தனுசு", "மகரம்", "கும்பம்", "மீனம்"];
+const NATCHATHIRAMS = [
+  "அஸ்வினி", "பரணி", "கார்த்திகை", "ரோகிணி", "மிருகசீரிடம்", "திருவாதிரை", "புனர்பூசம்",
+  "பூசம்", "ஆயில்யம்", "மகம்", "பூரம்", "உத்திரம்", "ஹஸ்தம்", "சித்திரை", "சுவாதி",
+  "விசாகம்", "அனுஷம்", "கேட்டை", "மூலம்", "பூராடம்", "உத்திராடம்", "திருவோணம்",
+  "அவிட்டம்", "சதயம்", "பூரட்டாதி", "உத்திரட்டாதி", "ரேவதி",
+];
 
 const EMPTY_PROFILE = {
   name: "",
   gender: "",
   dob: "",
+  birthTime: "",
+  rasi: "",
+  natchathiram: "",
   height: "",
   religion: "",
   caste: "",
@@ -226,6 +236,25 @@ function ProfileFormFields({ value, onChange, onPhotoFile, photoUploading }) {
 
       <label style={styles.label}>பிறந்த தேதி *</label>
       <input style={styles.input} type="date" max={todayStr()} value={value.dob} onChange={(e) => onChange({ ...value, dob: e.target.value })} />
+
+      <label style={styles.label}>பிறந்த நேரம் (விருப்பம்)</label>
+      <input style={styles.input} type="time" value={value.birthTime} onChange={(e) => onChange({ ...value, birthTime: e.target.value })} />
+
+      <label style={styles.label}>ராசி (விருப்பம்)</label>
+      <select style={styles.input} value={value.rasi} onChange={(e) => onChange({ ...value, rasi: e.target.value })}>
+        <option value="">தேர்ந்தெடுக்கவும்</option>
+        {RASIS.map((r) => (
+          <option key={r} value={r}>{r}</option>
+        ))}
+      </select>
+
+      <label style={styles.label}>நட்சத்திரம் (விருப்பம்)</label>
+      <select style={styles.input} value={value.natchathiram} onChange={(e) => onChange({ ...value, natchathiram: e.target.value })}>
+        <option value="">தேர்ந்தெடுக்கவும்</option>
+        {NATCHATHIRAMS.map((n) => (
+          <option key={n} value={n}>{n}</option>
+        ))}
+      </select>
 
       <label style={styles.label}>உயரம் (எ.கா. 5'6")</label>
       <input style={styles.input} value={value.height} onChange={(e) => onChange({ ...value, height: e.target.value })} placeholder="5'6&quot;" />
@@ -939,6 +968,9 @@ export default function MatrimonyApp() {
         {error && <div style={styles.errBox}>{error}</div>}
         <div style={styles.card}>
           <div style={styles.infoGrid}>
+            <div><div style={styles.infoLabel}>பிறந்த நேரம்</div><div style={styles.infoValue}>{p.birthTime || "-"}</div></div>
+            <div><div style={styles.infoLabel}>ராசி</div><div style={styles.infoValue}>{p.rasi || "-"}</div></div>
+            <div><div style={styles.infoLabel}>நட்சத்திரம்</div><div style={styles.infoValue}>{p.natchathiram || "-"}</div></div>
             <div><div style={styles.infoLabel}>மதம்</div><div style={styles.infoValue}>{p.religion || "-"}</div></div>
             <div><div style={styles.infoLabel}>ஜாதி</div><div style={styles.infoValue}>{p.caste || "-"}</div></div>
             <div><div style={styles.infoLabel}>தாய்மொழி</div><div style={styles.infoValue}>{p.motherTongue || "-"}</div></div>
