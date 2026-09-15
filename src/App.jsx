@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import {
   collection,
+  collectionGroup,
   doc,
   addDoc,
   updateDoc,
@@ -12,6 +13,8 @@ import {
   query,
   where,
   serverTimestamp,
+  arrayUnion,
+  increment,
 } from "firebase/firestore";
 import {
   onAuthStateChanged,
@@ -132,7 +135,27 @@ const DEFAULT_SETTINGS = {
 const PROFILES_COLLECTION = "profiles";
 const INTERESTS_COLLECTION = "interests";
 const ADMINS_COLLECTION = "admins";
+const MEMBERS_COLLECTION = "members";
 const SETTINGS_DOC = "site";
+
+// name/photo are gated behind a "photo unlock"; phone/email behind a
+// "phone unlock" — kept in separate private subcollections under each
+// profile so Firestore rules (not just the UI) enforce who can read them.
+const IDENTITY_FIELDS = ["name", "photoUrl"];
+const CONTACT_FIELDS = ["phone", "email"];
+const splitProfileFields = (f) => {
+  const identity = { name: f.name || "", photoUrl: f.photoUrl || "" };
+  const contact = { phone: f.phone || "", email: f.email || "" };
+  const publicFields = { ...f };
+  IDENTITY_FIELDS.concat(CONTACT_FIELDS).forEach((k) => delete publicFields[k]);
+  return { publicFields, identity, contact };
+};
+
+const PACKAGES = {
+  pro: { key: "pro", label: "Pro", price: 8000, months: 3, photoQuota: 20, phoneQuota: 5 },
+  superpro: { key: "superpro", label: "Super Pro", price: 15000, months: 6, photoQuota: 50, phoneQuota: 15 },
+  megapro: { key: "megapro", label: "Mega Pro", price: 25000, months: 12, photoQuota: 100, phoneQuota: 20 },
+};
 
 const MEMBER_EMAIL_DOMAIN = "members.lanka-matrimony.app";
 const digitsOnly = (s) => (s || "").replace(/\D/g, "");
@@ -343,6 +366,9 @@ export default function MatrimonyApp() {
   const [memberPhone, setMemberPhone] = useState("");
   const [memberPassword, setMemberPassword] = useState("");
   const [myProfile, setMyProfile] = useState(null);
+  const [myMember, setMyMember] = useState(null);
+  const [myIdentity, setMyIdentity] = useState(null);
+  const [myContact, setMyContact] = useState(null);
   const [myInterestsSent, setMyInterestsSent] = useState([]);
   const [myInterestsReceived, setMyInterestsReceived] = useState([]);
   const [editingMyProfile, setEditingMyProfile] = useState(false);
@@ -350,6 +376,10 @@ export default function MatrimonyApp() {
 
   // browse filters
   const [filters, setFilters] = useState({ gender: "", district: "", maritalStatus: "", minAge: "", maxAge: "" });
+
+  // profile detail: unlocked private data for the profile being viewed
+  const [viewedIdentity, setViewedIdentity] = useState(null);
+  const [viewedContact, setViewedContact] = useState(null);
 
   // interest form (on profile detail)
   const [interestForm, setInterestForm] = useState(EMPTY_INTEREST);
@@ -366,10 +396,12 @@ export default function MatrimonyApp() {
 
   // admin: data
   const [allProfiles, setAllProfiles] = useState([]);
+  const [allPrivate, setAllPrivate] = useState({}); // profileId -> { identity, contact }
   const [interests, setInterests] = useState([]);
   const [adminTab, setAdminTab] = useState("pending"); // pending | approved | rejected | interests | settings
   const [editingProfileId, setEditingProfileId] = useState(null);
   const [editDraft, setEditDraft] = useState(EMPTY_PROFILE);
+  const [editDraftMember, setEditDraftMember] = useState(null);
   const [nameDraft, setNameDraft] = useState("");
   const [taglineDraft, setTaglineDraft] = useState("");
 
@@ -443,17 +475,28 @@ export default function MatrimonyApp() {
   useEffect(() => {
     if (!authUser || !isAdminUser || !db) {
       setAllProfiles([]);
+      setAllPrivate({});
       setInterests([]);
       return;
     }
     const unsubAll = onSnapshot(collection(db, PROFILES_COLLECTION), (snap) => {
       setAllProfiles(sortByCreatedDesc(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
     });
+    const unsubPrivate = onSnapshot(collectionGroup(db, "private"), (snap) => {
+      const map = {};
+      snap.docs.forEach((d) => {
+        const profileId = d.ref.parent.parent.id;
+        if (!map[profileId]) map[profileId] = {};
+        map[profileId][d.id] = d.data();
+      });
+      setAllPrivate(map);
+    });
     const unsubInterests = onSnapshot(collection(db, INTERESTS_COLLECTION), (snap) => {
       setInterests(sortByCreatedDesc(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
     });
     return () => {
       unsubAll();
+      unsubPrivate();
       unsubInterests();
     };
   }, [authUser, isAdminUser]);
@@ -461,6 +504,7 @@ export default function MatrimonyApp() {
   useEffect(() => {
     if (!authUser || isAdminUser || !db) {
       setMyProfile(null);
+      setMyMember(null);
       setMyInterestsSent([]);
       setMyInterestsReceived([]);
       return;
@@ -472,6 +516,9 @@ export default function MatrimonyApp() {
         setMyProfile(d ? { id: d.id, ...d.data() } : null);
       }
     );
+    const unsubMember = onSnapshot(doc(db, MEMBERS_COLLECTION, authUser.uid), (snap) => {
+      setMyMember(snap.exists() ? { id: snap.id, ...snap.data() } : null);
+    });
     const unsubSent = onSnapshot(
       query(collection(db, INTERESTS_COLLECTION), where("requesterUid", "==", authUser.uid)),
       (snap) => setMyInterestsSent(sortByCreatedDesc(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
@@ -482,19 +529,58 @@ export default function MatrimonyApp() {
     );
     return () => {
       unsubProfile();
+      unsubMember();
       unsubSent();
       unsubReceived();
     };
   }, [authUser, isAdminUser]);
 
   useEffect(() => {
-    if (authUser && !isAdminUser && myProfile) {
-      setInterestForm({ requesterName: myProfile.name || "", requesterPhone: myProfile.phone || "", message: "" });
+    if (!myProfile || isAdminUser) {
+      setMyIdentity(null);
+      setMyContact(null);
+      return;
+    }
+    const unsubIdentity = onSnapshot(doc(db, PROFILES_COLLECTION, myProfile.id, "private", "identity"), (s) =>
+      setMyIdentity(s.exists() ? s.data() : null)
+    );
+    const unsubContact = onSnapshot(doc(db, PROFILES_COLLECTION, myProfile.id, "private", "contact"), (s) =>
+      setMyContact(s.exists() ? s.data() : null)
+    );
+    return () => {
+      unsubIdentity();
+      unsubContact();
+    };
+  }, [myProfile?.id, isAdminUser]);
+
+  useEffect(() => {
+    if (authUser && !isAdminUser && myIdentity && myContact) {
+      setInterestForm({ requesterName: myIdentity.name || "", requesterPhone: myContact.phone || "", message: "" });
     } else {
       setInterestForm(EMPTY_INTEREST);
     }
     setInterestDone(false);
   }, [selectedProfileId]);
+
+  useEffect(() => {
+    setViewedIdentity(null);
+    setViewedContact(null);
+    if (!selectedProfileId || !db) return;
+    const targetProfile = approvedProfiles.find((p) => p.id === selectedProfileId);
+    const isOwn = authUser && targetProfile && targetProfile.ownerUid === authUser.uid;
+    const canPhoto = isOwn || isAdminUser || (myMember?.unlockedPhotoIds || []).includes(selectedProfileId);
+    const canContact = isOwn || isAdminUser || (myMember?.unlockedPhoneIds || []).includes(selectedProfileId);
+    if (canPhoto) {
+      getDoc(doc(db, PROFILES_COLLECTION, selectedProfileId, "private", "identity"))
+        .then((s) => setViewedIdentity(s.exists() ? s.data() : null))
+        .catch(() => {});
+    }
+    if (canContact) {
+      getDoc(doc(db, PROFILES_COLLECTION, selectedProfileId, "private", "contact"))
+        .then((s) => setViewedContact(s.exists() ? s.data() : null))
+        .catch(() => {});
+    }
+  }, [selectedProfileId, myMember, isAdminUser]);
 
   const flash = (msg) => {
     setSavedFlash(msg);
@@ -539,13 +625,31 @@ export default function MatrimonyApp() {
       const email = memberEmailFromPhone(f.phone);
       const cred = await createUserWithEmailAndPassword(auth, email, registerPassword);
       const memberId = await assignMemberId();
-      await addDoc(collection(db, PROFILES_COLLECTION), {
+      const { publicFields, identity, contact } = splitProfileFields({
         ...f,
         name: f.name.trim(),
         phone: f.phone.trim(),
+      });
+      const profileRef = await addDoc(collection(db, PROFILES_COLLECTION), {
+        ...publicFields,
         status: "pending",
         ownerUid: cred.user.uid,
         memberId,
+        createdAt: serverTimestamp(),
+      });
+      await setDoc(doc(db, PROFILES_COLLECTION, profileRef.id, "private", "identity"), identity);
+      await setDoc(doc(db, PROFILES_COLLECTION, profileRef.id, "private", "contact"), contact);
+      await setDoc(doc(db, MEMBERS_COLLECTION, cred.user.uid), {
+        profileId: profileRef.id,
+        memberId,
+        package: null,
+        packageExpiresAt: null,
+        photoQuota: 0,
+        photoQuotaUsed: 0,
+        phoneQuota: 0,
+        phoneQuotaUsed: 0,
+        unlockedPhotoIds: [],
+        unlockedPhoneIds: [],
         createdAt: serverTimestamp(),
       });
       setRegisteredMemberId(memberId);
@@ -619,7 +723,7 @@ export default function MatrimonyApp() {
 
   const startEditMyProfile = () => {
     if (!myProfile) return;
-    setMyEditDraft({ ...EMPTY_PROFILE, ...myProfile });
+    setMyEditDraft({ ...EMPTY_PROFILE, ...myProfile, ...(myIdentity || {}), ...(myContact || {}) });
     setEditingMyProfile(true);
   };
 
@@ -629,11 +733,47 @@ export default function MatrimonyApp() {
     }
     try {
       const { id, status, createdAt, ownerUid, memberId, ...rest } = myEditDraft;
-      await updateDoc(doc(db, PROFILES_COLLECTION, myProfile.id), rest);
+      const { publicFields, identity, contact } = splitProfileFields(rest);
+      await updateDoc(doc(db, PROFILES_COLLECTION, myProfile.id), publicFields);
+      await setDoc(doc(db, PROFILES_COLLECTION, myProfile.id, "private", "identity"), identity, { merge: true });
+      await setDoc(doc(db, PROFILES_COLLECTION, myProfile.id, "private", "contact"), contact, { merge: true });
       setEditingMyProfile(false);
       flash("மாற்றங்கள் சேமிக்கப்பட்டன");
     } catch (e) {
       setError("சேமிக்க முடியவில்லை.");
+    }
+  };
+
+  // ---------- member: unlock photo/phone credits ----------
+  const unlockPhoto = async (targetProfileId) => {
+    if (!myMember || !authUser) return;
+    if ((myMember.unlockedPhotoIds || []).includes(targetProfileId)) return;
+    const remaining = (myMember.photoQuota || 0) - (myMember.photoQuotaUsed || 0);
+    if (remaining <= 0) return setError("Photo credits தீர்ந்துவிட்டது. Package renew செய்ய நிர்வாகியை தொடர்பு கொள்ளவும்.");
+    setError("");
+    try {
+      await updateDoc(doc(db, MEMBERS_COLLECTION, authUser.uid), {
+        unlockedPhotoIds: arrayUnion(targetProfileId),
+        photoQuotaUsed: increment(1),
+      });
+    } catch (e) {
+      setError("Unlock செய்ய முடியவில்லை.");
+    }
+  };
+
+  const unlockPhone = async (targetProfileId) => {
+    if (!myMember || !authUser) return;
+    if ((myMember.unlockedPhoneIds || []).includes(targetProfileId)) return;
+    const remaining = (myMember.phoneQuota || 0) - (myMember.phoneQuotaUsed || 0);
+    if (remaining <= 0) return setError("Phone credits தீர்ந்துவிட்டது. Package renew செய்ய நிர்வாகியை தொடர்பு கொள்ளவும்.");
+    setError("");
+    try {
+      await updateDoc(doc(db, MEMBERS_COLLECTION, authUser.uid), {
+        unlockedPhoneIds: arrayUnion(targetProfileId),
+        phoneQuotaUsed: increment(1),
+      });
+    } catch (e) {
+      setError("Unlock செய்ய முடியவில்லை.");
     }
   };
 
@@ -706,19 +846,64 @@ export default function MatrimonyApp() {
   };
   const startEditProfile = (p) => {
     setEditingProfileId(p.id);
-    setEditDraft({ ...EMPTY_PROFILE, ...p });
+    const priv = allPrivate[p.id] || {};
+    setEditDraft({ ...EMPTY_PROFILE, ...p, ...(priv.identity || {}), ...(priv.contact || {}) });
+    setEditDraftMember(null);
+    if (p.ownerUid) {
+      getDoc(doc(db, MEMBERS_COLLECTION, p.ownerUid))
+        .then((s) => setEditDraftMember(s.exists() ? { id: s.id, ...s.data() } : null))
+        .catch(() => setEditDraftMember(null));
+    }
   };
   const saveEditProfile = async () => {
     if (!editDraft.name.trim() || !editDraft.gender || !editDraft.phone.trim()) {
       return setError("பெயர், பாலினம், தொடர்பு எண் ஆகியவற்றை நிரப்பவும்.");
     }
     try {
-      const { id, status, createdAt, ...rest } = editDraft;
-      await updateDoc(doc(db, PROFILES_COLLECTION, editingProfileId), rest);
+      const { id, status, createdAt, ownerUid, memberId, ...rest } = editDraft;
+      const { publicFields, identity, contact } = splitProfileFields(rest);
+      await updateDoc(doc(db, PROFILES_COLLECTION, editingProfileId), publicFields);
+      await setDoc(doc(db, PROFILES_COLLECTION, editingProfileId, "private", "identity"), identity, { merge: true });
+      await setDoc(doc(db, PROFILES_COLLECTION, editingProfileId, "private", "contact"), contact, { merge: true });
       setEditingProfileId(null);
       flash("மாற்றங்கள் சேமிக்கப்பட்டன");
     } catch (e) {
       setError("சேமிக்க முடியவில்லை.");
+    }
+  };
+
+  // ---------- admin: package assignment ----------
+  const assignPackage = async (ownerUid, packageKey) => {
+    const pkg = PACKAGES[packageKey];
+    if (!pkg || !ownerUid) return;
+    try {
+      const expiresAt = new Date();
+      expiresAt.setMonth(expiresAt.getMonth() + pkg.months);
+      const data = {
+        package: packageKey,
+        packageExpiresAt: expiresAt,
+        photoQuota: pkg.photoQuota,
+        photoQuotaUsed: 0,
+        phoneQuota: pkg.phoneQuota,
+        phoneQuotaUsed: 0,
+      };
+      await setDoc(doc(db, MEMBERS_COLLECTION, ownerUid), data, { merge: true });
+      setEditDraftMember((prev) => ({ ...(prev || {}), ...data }));
+      flash(`${pkg.label} package assign செய்யப்பட்டது`);
+    } catch (e) {
+      setError("Package assign செய்ய முடியவில்லை.");
+    }
+  };
+
+  const clearPackage = async (ownerUid) => {
+    if (!ownerUid) return;
+    try {
+      const data = { package: null, packageExpiresAt: null, photoQuota: 0, photoQuotaUsed: 0, phoneQuota: 0, phoneQuotaUsed: 0 };
+      await setDoc(doc(db, MEMBERS_COLLECTION, ownerUid), data, { merge: true });
+      setEditDraftMember((prev) => ({ ...(prev || {}), ...data }));
+      flash("Package நீக்கப்பட்டது");
+    } catch (e) {
+      setError("செயல்படுத்த முடியவில்லை.");
     }
   };
   const deleteInterest = async (id) => {
@@ -924,13 +1109,12 @@ export default function MatrimonyApp() {
 
         {filteredProfiles.map((p) => {
           const age = calcAge(p.dob);
+          const unlocked = (myMember?.unlockedPhotoIds || []).includes(p.id) || p.ownerUid === authUser?.uid;
           return (
             <button key={p.id} style={styles.profileCard} onClick={() => { setSelectedProfileId(p.id); setScreen("profile"); }}>
-              <div style={styles.avatar}>
-                {p.photoUrl ? <img src={p.photoUrl} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : (p.gender === "பெண்" ? "👰" : "🤵")}
-              </div>
+              <div style={styles.avatar}>{unlocked ? (p.gender === "பெண்" ? "👰" : "🤵") : "🔒"}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontFamily: "'Fraunces',serif", fontWeight: 700, fontSize: 16, color: "#F6F8FC" }}>{p.name}</div>
+                <div style={{ fontFamily: "'Fraunces',serif", fontWeight: 700, fontSize: 16, color: "#F6F8FC" }}>Profile #{p.memberId ?? "-"}</div>
                 <div style={{ color: "#9FB0CE", fontSize: 13 }}>
                   {age !== null ? `${age} வயது` : ""}{p.district ? ` • ${p.district}` : ""}{p.profession ? ` • ${p.profession}` : ""}
                 </div>
@@ -950,6 +1134,9 @@ export default function MatrimonyApp() {
   if (screen === "profile" && selectedProfile) {
     const p = selectedProfile;
     const age = calcAge(p.dob);
+    const isOwnProfile = authUser && p.ownerUid === authUser.uid;
+    const photoRemaining = myMember ? (myMember.photoQuota || 0) - (myMember.photoQuotaUsed || 0) : 0;
+    const phoneRemaining = myMember ? (myMember.phoneQuota || 0) - (myMember.phoneQuotaUsed || 0) : 0;
     return (
       <div style={styles.page}>
         <Header siteName={settings.siteName} onAdminClick={goAdmin} />
@@ -957,15 +1144,31 @@ export default function MatrimonyApp() {
         <div style={styles.section}>
           <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
             <div style={{ ...styles.avatar, width: 84, height: 84, fontSize: 34 }}>
-              {p.photoUrl ? <img src={p.photoUrl} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : (p.gender === "பெண்" ? "👰" : "🤵")}
+              {viewedIdentity?.photoUrl ? <img src={viewedIdentity.photoUrl} alt="profile" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : "🔒"}
             </div>
             <div>
-              <h1 style={{ ...styles.h1, marginBottom: 2 }}>{p.name}</h1>
+              <h1 style={{ ...styles.h1, marginBottom: 2 }}>{viewedIdentity?.name || `Profile #${p.memberId ?? "-"}`}</h1>
               <p style={styles.sub}>{age !== null ? `${age} வயது` : ""}{p.height ? ` • ${p.height}` : ""}</p>
             </div>
           </div>
         </div>
         {error && <div style={styles.errBox}>{error}</div>}
+
+        <div style={styles.card}>
+          <div style={styles.eyebrow}>புகைப்படம் & பெயர்</div>
+          {viewedIdentity ? (
+            <p style={{ color: "#8ADB9A", fontSize: 13.5, margin: 0 }}>✓ Unlock செய்யப்பட்டது</p>
+          ) : (
+            <>
+              <p style={{ color: "#9FB0CE", fontSize: 13.5, lineHeight: 1.6 }}>
+                பெயர் மற்றும் புகைப்படத்தை பார்க்க 1 Photo Credit தேவை. {myMember && <>மீதம் உள்ளது: <strong style={{ color: "#F6F8FC" }}>{photoRemaining}</strong></>}
+              </p>
+              <button style={styles.btnPrimary} onClick={() => unlockPhoto(p.id)} disabled={!myMember || photoRemaining <= 0}>
+                🔓 புகைப்படம் + பெயர் பார்க்க
+              </button>
+            </>
+          )}
+        </div>
         <div style={styles.card}>
           <div style={styles.infoGrid}>
             <div><div style={styles.infoLabel}>பிறந்த நேரம்</div><div style={styles.infoValue}>{p.birthTime || "-"}</div></div>
@@ -989,9 +1192,27 @@ export default function MatrimonyApp() {
         </div>
 
         <div style={styles.card}>
-          <div style={styles.eyebrow}>தொடர்பு</div>
+          <div style={styles.eyebrow}>தொடர்பு எண்</div>
+          {viewedContact ? (
+            <div style={styles.infoValue}>
+              {viewedContact.phone}{viewedContact.email ? ` • ${viewedContact.email}` : ""}
+            </div>
+          ) : (
+            <>
+              <p style={{ color: "#9FB0CE", fontSize: 13.5, lineHeight: 1.6 }}>
+                தொடர்பு எண்ணை பார்க்க 1 Phone Credit தேவை. {myMember && <>மீதம் உள்ளது: <strong style={{ color: "#F6F8FC" }}>{phoneRemaining}</strong></>}
+              </p>
+              <button style={styles.btnPrimary} onClick={() => unlockPhone(p.id)} disabled={!myMember || phoneRemaining <= 0}>
+                🔓 தொடர்பு எண் பார்க்க
+              </button>
+            </>
+          )}
+        </div>
+
+        <div style={styles.card}>
+          <div style={styles.eyebrow}>விருப்பம் தெரிவிக்க (இலவசம்)</div>
           <p style={{ color: "#9FB0CE", fontSize: 13.5, lineHeight: 1.6, marginTop: 0 }}>
-            தனியுரிமை காரணமாக தொடர்பு விவரங்கள் நேரடியாக காட்டப்படாது. கீழே உங்கள் விவரத்தை பதிவு செய்யவும் — நிர்வாகி இரு தரப்பையும் இணைப்பார்.
+            Credits இல்லாமலேயே ஒரு விருப்ப செய்தி அனுப்பலாம் — நிர்வாகி இரு தரப்பையும் இணைப்பார்.
           </p>
           {interestDone ? (
             <div style={styles.flash}>உங்கள் விருப்பம் பதிவு செய்யப்பட்டது. நிர்வாகி விரைவில் தொடர்பு கொள்வார்.</div>
@@ -1131,7 +1352,7 @@ export default function MatrimonyApp() {
         <Back to="home" label="வெளியேறு" logout onGo={goTo} />
         <div style={styles.section}>
           <div style={styles.eyebrow}>எனது Dashboard</div>
-          <h1 style={styles.h1}>{myProfile ? myProfile.name : "உங்கள் கணக்கு"}</h1>
+          <h1 style={styles.h1}>{myIdentity?.name || "உங்கள் கணக்கு"}</h1>
         </div>
         {error && <div style={styles.errBox}>{error}</div>}
         {savedFlash && <div style={styles.flash}>{savedFlash}</div>}
@@ -1140,6 +1361,24 @@ export default function MatrimonyApp() {
           <button style={styles.roleCard} onClick={() => { setError(""); setScreen("browse"); }}>
             <span style={{ fontSize: 26 }}>💞</span><span>சுயவிவரங்களை பார்வையிட</span>
           </button>
+        </div>
+
+        <div style={styles.card}>
+          <div style={styles.infoLabel}>தற்போதைய Package</div>
+          <div style={styles.infoValue}>{myMember?.package ? PACKAGES[myMember.package].label : "இல்லை (Free)"}</div>
+          {myMember?.package && (
+            <>
+              <div style={styles.infoLabel}>காலாவதி</div>
+              <div style={styles.infoValue}>{fmtDate(myMember.packageExpiresAt)}</div>
+              <div style={styles.infoGrid}>
+                <div><div style={styles.infoLabel}>Photo Credits மீதம்</div><div style={styles.infoValue}>{(myMember.photoQuota || 0) - (myMember.photoQuotaUsed || 0)} / {myMember.photoQuota}</div></div>
+                <div><div style={styles.infoLabel}>Phone Credits மீதம்</div><div style={styles.infoValue}>{(myMember.phoneQuota || 0) - (myMember.phoneQuotaUsed || 0)} / {myMember.phoneQuota}</div></div>
+              </div>
+            </>
+          )}
+          {!myMember?.package && (
+            <p style={{ color: "#9FB0CE", fontSize: 12.5, margin: 0 }}>Package வாங்க நிர்வாகியை தொடர்பு கொள்ளவும் (Pro / Super Pro / Mega Pro).</p>
+          )}
         </div>
 
         {!myProfile && (
@@ -1193,7 +1432,7 @@ export default function MatrimonyApp() {
             const target = approvedProfiles.find((p) => p.id === it.profileId);
             return (
               <div key={it.id} style={{ background: "#0B1220", border: "1px solid #1E2A44", borderRadius: 10, padding: "12px", marginBottom: 8 }}>
-                <div style={{ fontWeight: 700, fontSize: 14 }}>{target ? target.name : "சுயவிவரம்"}</div>
+                <div style={{ fontWeight: 700, fontSize: 14 }}>{target ? `Profile #${target.memberId ?? "-"}` : "சுயவிவரம்"}</div>
                 <div style={{ color: "#7C8CAE", fontSize: 12.5, marginTop: 3 }}>{fmtDate(it.createdAt)}</div>
               </div>
             );
@@ -1225,13 +1464,16 @@ export default function MatrimonyApp() {
     const renderProfileRow = (p, actions) => {
       const age = calcAge(p.dob);
       const isEditing = editingProfileId === p.id;
+      const priv = allPrivate[p.id] || {};
+      const displayName = priv.identity?.name || `Profile #${p.memberId ?? "-"}`;
+      const displayPhone = priv.contact?.phone || "";
       return (
         <div key={p.id} style={{ background: "#0B1220", border: "1px solid #1E2A44", borderRadius: 12, padding: "14px", marginBottom: 10 }}>
           <div style={styles.row}>
             <div>
-              <div style={{ fontWeight: 700, fontSize: 15 }}>{p.name} <span style={styles.badge}>{p.gender}</span>{p.memberId && <span style={styles.badge}> #{p.memberId}</span>}</div>
+              <div style={{ fontWeight: 700, fontSize: 15 }}>{displayName} <span style={styles.badge}>{p.gender}</span>{p.memberId && <span style={styles.badge}> #{p.memberId}</span>}</div>
               <div style={{ color: "#7C8CAE", fontSize: 12.5, marginTop: 3 }}>
-                {age !== null ? `${age} வயது` : ""}{p.district ? ` • ${p.district}` : ""}{p.phone ? ` • ${p.phone}` : ""}
+                {age !== null ? `${age} வயது` : ""}{p.district ? ` • ${p.district}` : ""}{displayPhone ? ` • ${displayPhone}` : ""}
               </div>
             </div>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "flex-end" }}>{actions}</div>
@@ -1239,9 +1481,33 @@ export default function MatrimonyApp() {
           {isEditing && (
             <div style={{ paddingTop: 12 }}>
               <ProfileFormFields value={editDraft} onChange={setEditDraft} onPhotoFile={handlePhotoFile} photoUploading={photoUploading} />
-              <div style={{ display: "flex", gap: 10 }}>
+              <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
                 <button style={styles.btnPrimary} onClick={saveEditProfile} disabled={photoUploading}>சேமிக்க</button>
                 <button style={styles.btnGhost} onClick={() => setEditingProfileId(null)}>ரத்து</button>
+              </div>
+
+              <div style={{ borderTop: "1px solid #1E2A44", paddingTop: 14 }}>
+                <div style={styles.infoLabel}>Package நிலை</div>
+                <div style={styles.infoValue}>
+                  {editDraftMember?.package
+                    ? `${PACKAGES[editDraftMember.package].label} (${fmtDate(editDraftMember.packageExpiresAt)} வரை)`
+                    : "இல்லை"}
+                </div>
+                {editDraftMember?.package && (
+                  <div style={{ color: "#9FB0CE", fontSize: 12.5, marginBottom: 10 }}>
+                    Photo: {(editDraftMember.photoQuota || 0) - (editDraftMember.photoQuotaUsed || 0)}/{editDraftMember.photoQuota} • Phone: {(editDraftMember.phoneQuota || 0) - (editDraftMember.phoneQuotaUsed || 0)}/{editDraftMember.phoneQuota}
+                  </div>
+                )}
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {Object.values(PACKAGES).map((pkg) => (
+                    <button key={pkg.key} style={{ ...styles.btnGhost, width: "auto", padding: "8px 14px" }} onClick={() => assignPackage(p.ownerUid, pkg.key)}>
+                      {pkg.label} கொடு
+                    </button>
+                  ))}
+                  {editDraftMember?.package && (
+                    <button style={styles.dangerBtn} onClick={() => clearPackage(p.ownerUid)}>நீக்கு</button>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -1312,13 +1578,14 @@ export default function MatrimonyApp() {
             {interests.length === 0 && <p style={{ color: "#9FB0CE", fontSize: 14, margin: 0 }}>ஆர்வம் தெரிவித்தவர்கள் இல்லை.</p>}
             {interests.map((it) => {
               const target = allProfiles.find((p) => p.id === it.profileId);
+              const targetPhone = target ? allPrivate[target.id]?.contact?.phone : null;
               return (
                 <div key={it.id} style={{ background: "#0B1220", border: "1px solid #1E2A44", borderRadius: 12, padding: "14px", marginBottom: 10 }}>
                   <div style={styles.row}>
                     <div>
-                      <div style={{ fontWeight: 700, fontSize: 14.5 }}>{it.requesterName} <span style={{ color: "#7C8CAE", fontWeight: 400, fontSize: 12.5 }}>→ {target ? target.name : "(நீக்கப்பட்ட சுயவிவரம்)"}</span></div>
+                      <div style={{ fontWeight: 700, fontSize: 14.5 }}>{it.requesterName} <span style={{ color: "#7C8CAE", fontWeight: 400, fontSize: 12.5 }}>→ {target ? `Profile #${target.memberId ?? "-"}` : "(நீக்கப்பட்ட சுயவிவரம்)"}</span></div>
                       <div style={{ color: "#7C8CAE", fontSize: 12.5, marginTop: 3 }}>
-                        {it.requesterPhone}{target?.phone ? ` • சுயவிவர எண்: ${target.phone}` : ""} • {fmtDate(it.createdAt)}
+                        {it.requesterPhone}{targetPhone ? ` • சுயவிவர எண்: ${targetPhone}` : ""} • {fmtDate(it.createdAt)}
                       </div>
                       {it.message && <div style={{ color: "#9FB0CE", fontSize: 13, marginTop: 6 }}>{it.message}</div>}
                     </div>
