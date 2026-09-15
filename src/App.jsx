@@ -573,6 +573,11 @@ export default function MatrimonyApp() {
     setScreen(authUser && !isAdminUser ? "memberDashboard" : "memberLogin");
   };
 
+  const goBrowse = () => {
+    setError("");
+    setScreen(authUser ? "browse" : "memberLogin");
+  };
+
   const handleMemberSignIn = async () => {
     if (!memberPhone.trim() || !memberPassword.trim()) return setError("தொடர்பு எண் மற்றும் கடவுச்சொல்லை உள்ளிடவும்.");
     setAuthBusy(true);
@@ -780,7 +785,7 @@ export default function MatrimonyApp() {
           <button style={styles.roleCard} onClick={() => { setError(""); setRegisterDone(false); setScreen("register"); }}>
             <span style={{ fontSize: 26 }}>📝</span><span>சுயவிவரம் பதிவு செய்ய</span>
           </button>
-          <button style={styles.roleCard} onClick={() => { setError(""); setScreen("browse"); }}>
+          <button style={styles.roleCard} onClick={goBrowse}>
             <span style={{ fontSize: 26 }}>💞</span><span>சுயவிவரங்களை பார்வையிட</span>
           </button>
           <button style={styles.roleCard} onClick={goMemberArea}>
@@ -849,6 +854,10 @@ export default function MatrimonyApp() {
 
   // ---------- BROWSE ----------
   if (screen === "browse") {
+    if (!authUser) {
+      setScreen("memberLogin");
+      return null;
+    }
     return (
       <div style={styles.page}>
         <Header siteName={settings.siteName} onAdminClick={goAdmin} />
@@ -913,6 +922,10 @@ export default function MatrimonyApp() {
   }
 
   // ---------- PROFILE DETAIL ----------
+  if (screen === "profile" && !authUser) {
+    setScreen("memberLogin");
+    return null;
+  }
   if (screen === "profile" && selectedProfile) {
     const p = selectedProfile;
     const age = calcAge(p.dob);
