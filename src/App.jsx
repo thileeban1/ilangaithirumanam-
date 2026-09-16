@@ -61,6 +61,7 @@ const sortByCreatedDesc = (list) =>
 
 const MAX_PHOTO_DIM = 480;
 const PHOTO_JPEG_QUALITY = 0.72;
+const MAX_PHOTOS = 3;
 
 const resizeImageToDataUrl = (file) =>
   new Promise((resolve, reject) => {
@@ -119,8 +120,13 @@ const EMPTY_PROFILE = {
   about: "",
   phone: "",
   email: "",
-  photoUrl: "",
+  photoUrls: [],
 };
+
+// A profile's first photo, whether it was saved under the old single-photo
+// field (photoUrl) or the current multi-photo array (photoUrls).
+const firstPhotoOf = (p) => (p?.photoUrls && p.photoUrls.length > 0 ? p.photoUrls[0] : p?.photoUrl || "");
+const allPhotosOf = (p) => (p?.photoUrls && p.photoUrls.length > 0 ? p.photoUrls : p?.photoUrl ? [p.photoUrl] : []);
 
 const EMPTY_INTEREST = { requesterName: "", requesterPhone: "", message: "" };
 
@@ -220,7 +226,64 @@ function Back({ to, label, logout, onGo }) {
   );
 }
 
-function ProfileFormFields({ value, onChange, onPhotoFile, photoUploading }) {
+// Displays a member's photo with basic anti-copy deterrents (no drag/save
+// via right-click or long-press) and a tiled, semi-transparent watermark
+// naming whoever is viewing it, so a leaked screenshot can be traced back.
+// None of this can actually stop a screenshot — that isn't possible from a
+// web page — it only discourages casual saving/forwarding.
+function ProtectedPhoto({ src, alt, watermark }) {
+  return (
+    <div style={{ position: "relative", width: "100%", height: "100%" }}>
+      <img
+        src={src}
+        alt={alt}
+        draggable={false}
+        onContextMenu={(e) => e.preventDefault()}
+        style={{
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+          display: "block",
+          userSelect: "none",
+          WebkitUserSelect: "none",
+          WebkitTouchCallout: "none",
+        }}
+      />
+      {watermark && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            pointerEvents: "none",
+            overflow: "hidden",
+            display: "flex",
+            flexWrap: "wrap",
+            alignContent: "space-around",
+            justifyContent: "space-around",
+            transform: "rotate(-25deg) scale(1.5)",
+          }}
+        >
+          {Array.from({ length: 9 }).map((_, i) => (
+            <span
+              key={i}
+              style={{
+                fontSize: 10,
+                color: "rgba(255,255,255,0.55)",
+                fontFamily: "'IBM Plex Mono',monospace",
+                whiteSpace: "nowrap",
+                textShadow: "0 0 2px rgba(0,0,0,0.85)",
+              }}
+            >
+              {watermark}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ProfileFormFields({ value, onChange, onAddPhoto, onRemovePhoto, photoUploading }) {
   return (
     <>
       <label style={styles.label}>பெயர் *</label>
@@ -293,18 +356,35 @@ function ProfileFormFields({ value, onChange, onPhotoFile, photoUploading }) {
       <label style={styles.label}>தொழில்</label>
       <input style={styles.input} value={value.profession} onChange={(e) => onChange({ ...value, profession: e.target.value })} />
 
-      <label style={styles.label}>புகைப்படம் (விருப்பம்)</label>
-      {value.photoUrl && (
-        <div style={{ marginBottom: 10 }}>
-          <img src={value.photoUrl} alt="preview" style={{ width: 84, height: 84, borderRadius: 12, objectFit: "cover", border: "1px solid #263354" }} />
+      <label style={styles.label}>புகைப்படங்கள் * (குறைந்தது 1, அதிகபட்சம் {MAX_PHOTOS})</label>
+      {value.photoUrls?.length > 0 && (
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
+          {value.photoUrls.map((url, i) => (
+            <div key={i} style={{ position: "relative" }}>
+              <img src={url} alt={`preview ${i + 1}`} style={{ width: 84, height: 84, borderRadius: 12, objectFit: "cover", border: "1px solid #263354", display: "block" }} />
+              <button
+                type="button"
+                onClick={() => onRemovePhoto(i, value, onChange)}
+                aria-label="படத்தை நீக்க"
+                style={{ position: "absolute", top: -6, right: -6, width: 22, height: 22, borderRadius: "50%", border: "none", background: "#C23B6B", color: "#fff", fontSize: 13, lineHeight: "22px", padding: 0, cursor: "pointer" }}
+              >
+                ×
+              </button>
+            </div>
+          ))}
         </div>
       )}
-      <input
-        style={styles.input}
-        type="file"
-        accept="image/*"
-        onChange={(e) => onPhotoFile(e.target.files?.[0], value, onChange)}
-      />
+      {(value.photoUrls?.length || 0) < MAX_PHOTOS && (
+        <input
+          style={styles.input}
+          type="file"
+          accept="image/*"
+          onChange={(e) => {
+            onAddPhoto(e.target.files?.[0], value, onChange);
+            e.target.value = "";
+          }}
+        />
+      )}
       {photoUploading && <div style={{ color: "#9FB0CE", fontSize: 12.5, marginTop: -8, marginBottom: 12 }}>படத்தை சேர்க்கிறது…</div>}
 
       <label style={styles.label}>தன்னைப் பற்றி</label>
@@ -507,13 +587,13 @@ export default function MatrimonyApp() {
   };
 
   // ---------- shared: photo upload ----------
-  const handlePhotoFile = async (file, value, onChange) => {
-    if (!file) return;
+  const handleAddPhoto = async (file, value, onChange) => {
+    if (!file || (value.photoUrls?.length || 0) >= MAX_PHOTOS) return;
     setError("");
     setPhotoUploading(true);
     try {
       const dataUrl = await resizeImageToDataUrl(file);
-      onChange({ ...value, photoUrl: dataUrl });
+      onChange({ ...value, photoUrls: [...(value.photoUrls || []), dataUrl] });
     } catch (e) {
       setError("புகைப்படத்தை சேர்க்க முடியவில்லை. வேறு படத்தை முயற்சிக்கவும்.");
     } finally {
@@ -521,11 +601,18 @@ export default function MatrimonyApp() {
     }
   };
 
+  const handleRemovePhoto = (index, value, onChange) => {
+    onChange({ ...value, photoUrls: value.photoUrls.filter((_, i) => i !== index) });
+  };
+
   // ---------- public: register ----------
   const handleRegisterSubmit = async () => {
     const f = registerForm;
     if (!f.name.trim() || !f.gender || !f.dob || !f.phone.trim()) {
       return setError("பெயர், பாலினம், பிறந்த தேதி, தொடர்பு எண் ஆகியவற்றை நிரப்பவும்.");
+    }
+    if (!f.photoUrls || f.photoUrls.length === 0) {
+      return setError("குறைந்தது ஒரு புகைப்படமாவது பதிவேற்ற வேண்டும்.");
     }
     if (registerPassword.length < 6) {
       return setError("கடவுச்சொல் குறைந்தது 6 எழுத்துகள் இருக்க வேண்டும்.");
@@ -757,6 +844,9 @@ export default function MatrimonyApp() {
   const approvedAdminProfiles = useMemo(() => allProfiles.filter((p) => p.status === "approved"), [allProfiles]);
   const rejectedProfiles = useMemo(() => allProfiles.filter((p) => p.status === "rejected"), [allProfiles]);
   const selectedProfile = approvedProfiles.find((p) => p.id === selectedProfileId) || null;
+  // Traces a leaked screenshot back to whoever was viewing the photo when it
+  // was taken, since a web page can't actually prevent a screenshot.
+  const photoWatermark = isAdminUser ? "ADMIN" : myProfile ? `ID ${myProfile.memberId}` : "GUEST";
 
   const goTo = (screen, logout) => {
     setError("");
@@ -860,7 +950,7 @@ export default function MatrimonyApp() {
         </div>
         {error && <div style={styles.errBox}>{error}</div>}
         <div style={styles.card}>
-          <ProfileFormFields value={registerForm} onChange={setRegisterForm} onPhotoFile={handlePhotoFile} photoUploading={photoUploading} />
+          <ProfileFormFields value={registerForm} onChange={setRegisterForm} onAddPhoto={handleAddPhoto} onRemovePhoto={handleRemovePhoto} photoUploading={photoUploading} />
           <label style={styles.label}>கடவுச்சொல் * (login-க்கு பயன்படும்)</label>
           <input style={styles.input} type="password" value={registerPassword} onChange={(e) => setRegisterPassword(e.target.value)} placeholder="குறைந்தது 6 எழுத்துகள்" />
           <label style={styles.label}>கடவுச்சொல் மீண்டும் *</label>
@@ -927,7 +1017,7 @@ export default function MatrimonyApp() {
           return (
             <button key={p.id} style={styles.profileCard} onClick={() => { setSelectedProfileId(p.id); setScreen("profile"); }}>
               <div style={styles.avatar}>
-                {p.photoUrl ? <img src={p.photoUrl} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : (p.gender === "பெண்" ? "👰" : "🤵")}
+                {firstPhotoOf(p) ? <ProtectedPhoto src={firstPhotoOf(p)} alt={p.name} watermark={photoWatermark} /> : (p.gender === "பெண்" ? "👰" : "🤵")}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontFamily: "'Fraunces',serif", fontWeight: 700, fontSize: 16, color: "#F6F8FC" }}>{p.name}</div>
@@ -950,6 +1040,7 @@ export default function MatrimonyApp() {
   if (screen === "profile" && selectedProfile) {
     const p = selectedProfile;
     const age = calcAge(p.dob);
+    const photos = allPhotosOf(p);
     return (
       <div style={styles.page}>
         <Header siteName={settings.siteName} onAdminClick={goAdmin} />
@@ -957,13 +1048,22 @@ export default function MatrimonyApp() {
         <div style={styles.section}>
           <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
             <div style={{ ...styles.avatar, width: 84, height: 84, fontSize: 34 }}>
-              {p.photoUrl ? <img src={p.photoUrl} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : (p.gender === "பெண்" ? "👰" : "🤵")}
+              {photos[0] ? <ProtectedPhoto src={photos[0]} alt={p.name} watermark={photoWatermark} /> : (p.gender === "பெண்" ? "👰" : "🤵")}
             </div>
             <div>
               <h1 style={{ ...styles.h1, marginBottom: 2 }}>{p.name}</h1>
               <p style={styles.sub}>{age !== null ? `${age} வயது` : ""}{p.height ? ` • ${p.height}` : ""}</p>
             </div>
           </div>
+          {photos.length > 1 && (
+            <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+              {photos.slice(1).map((url, i) => (
+                <div key={i} style={{ width: 70, height: 70, borderRadius: 12, overflow: "hidden", border: "1px solid #263354" }}>
+                  <ProtectedPhoto src={url} alt={`${p.name} ${i + 2}`} watermark={photoWatermark} />
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         {error && <div style={styles.errBox}>{error}</div>}
         <div style={styles.card}>
@@ -1162,7 +1262,7 @@ export default function MatrimonyApp() {
 
         {myProfile && editingMyProfile && (
           <div style={styles.card}>
-            <ProfileFormFields value={myEditDraft} onChange={setMyEditDraft} onPhotoFile={handlePhotoFile} photoUploading={photoUploading} />
+            <ProfileFormFields value={myEditDraft} onChange={setMyEditDraft} onAddPhoto={handleAddPhoto} onRemovePhoto={handleRemovePhoto} photoUploading={photoUploading} />
             <div style={{ display: "flex", gap: 10 }}>
               <button style={styles.btnPrimary} onClick={saveMyProfile} disabled={photoUploading}>சேமிக்க</button>
               <button style={styles.btnGhost} onClick={() => setEditingMyProfile(false)}>ரத்து</button>
@@ -1238,7 +1338,7 @@ export default function MatrimonyApp() {
           </div>
           {isEditing && (
             <div style={{ paddingTop: 12 }}>
-              <ProfileFormFields value={editDraft} onChange={setEditDraft} onPhotoFile={handlePhotoFile} photoUploading={photoUploading} />
+              <ProfileFormFields value={editDraft} onChange={setEditDraft} onAddPhoto={handleAddPhoto} onRemovePhoto={handleRemovePhoto} photoUploading={photoUploading} />
               <div style={{ display: "flex", gap: 10 }}>
                 <button style={styles.btnPrimary} onClick={saveEditProfile} disabled={photoUploading}>சேமிக்க</button>
                 <button style={styles.btnGhost} onClick={() => setEditingProfileId(null)}>ரத்து</button>
