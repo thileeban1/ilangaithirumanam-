@@ -198,6 +198,22 @@
 	text-decoration: line-through;
 }
 
+.cplms-admin-login {
+	text-align: center;
+	margin-top: 28px;
+	font-size: 12px;
+}
+
+.cplms-admin-login a {
+	color: #9ca3af;
+	text-decoration: none;
+}
+
+.cplms-admin-login a:hover {
+	color: #7c3aed;
+	text-decoration: underline;
+}
+
 .cplms-whatsapp-float {
 	position: fixed;
 	right: 20px;

@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Class Portal LMS
  * Description: தரம் / பாடம் / Zoom Link / Recordings / PDF குறிப்புகளை நிர்வகிக்கவும், மாணவர்கள் ஒரு Access Code மூலம் தங்களுக்கான பாடங்களை மட்டும் பார்க்கவும் உதவும் எளிய LMS.
- * Version: 1.0.7
+ * Version: 1.0.8
  * Author: Class Portal
  * Text Domain: class-portal-lms
  */
@@ -11,7 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'CPLMS_VERSION', '1.0.7' );
+define( 'CPLMS_VERSION', '1.0.8' );
 define( 'CPLMS_MAX_RECORDING_VIEWS', 3 );
 define( 'CPLMS_PATH', plugin_dir_path( __FILE__ ) );
 define( 'CPLMS_URL', plugin_dir_url( __FILE__ ) );
@@ -529,6 +529,7 @@ function cplms_shortcode( $atts ) {
 				<p><a href="<?php echo esc_url( get_permalink() ); ?>" class="cplms-logout">← வேறு Access Code உள்ளிட</a></p>
 			</div>
 		<?php endif; ?>
+		<p class="cplms-admin-login"><a href="<?php echo esc_url( wp_login_url( get_permalink() ) ); ?>">🔑 ஆசிரியர் நுழைவு (Admin Login)</a></p>
 	</div>
 	<?php
 	return ob_get_clean();
