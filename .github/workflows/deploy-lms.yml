@@ -33,7 +33,10 @@ jobs:
           VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.LMS_FIREBASE_STORAGE_BUCKET }}
           VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.LMS_FIREBASE_MESSAGING_SENDER_ID }}
           VITE_FIREBASE_APP_ID: ${{ secrets.LMS_FIREBASE_APP_ID }}
+      # Skips cleanly (instead of failing the build) until the LMS's own
+      # Firebase project secrets are added — see lms/README.md section 4.
       - uses: FirebaseExtended/action-hosting-deploy@v0
+        if: ${{ secrets.FIREBASE_LMS_SERVICE_ACCOUNT != '' }}
         with:
           repoToken: "${{ secrets.GITHUB_TOKEN }}"
           firebaseServiceAccount: "${{ secrets.FIREBASE_LMS_SERVICE_ACCOUNT }}"
