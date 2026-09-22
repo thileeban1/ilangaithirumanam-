@@ -17,6 +17,10 @@ jobs:
     defaults:
       run:
         working-directory: lms
+    env:
+      # secrets can't be referenced directly in an `if:` conditional, so
+      # this turns the secret's presence into a plain string step if: can read.
+      HAS_LMS_DEPLOY_SECRET: ${{ secrets.FIREBASE_LMS_SERVICE_ACCOUNT != '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -36,7 +40,7 @@ jobs:
       # Skips cleanly (instead of failing the build) until the LMS's own
       # Firebase project secrets are added — see lms/README.md section 4.
       - uses: FirebaseExtended/action-hosting-deploy@v0
-        if: ${{ secrets.FIREBASE_LMS_SERVICE_ACCOUNT != '' }}
+        if: env.HAS_LMS_DEPLOY_SECRET == 'true'
         with:
           repoToken: "${{ secrets.GITHUB_TOKEN }}"
           firebaseServiceAccount: "${{ secrets.FIREBASE_LMS_SERVICE_ACCOUNT }}"
