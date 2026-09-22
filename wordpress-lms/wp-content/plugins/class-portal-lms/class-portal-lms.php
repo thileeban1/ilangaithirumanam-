@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Class Portal LMS
  * Description: தரம் / பாடம் / Zoom Link / Recordings / PDF குறிப்புகளை நிர்வகிக்கவும், மாணவர்கள் ஒரு Access Code மூலம் தங்களுக்கான பாடங்களை மட்டும் பார்க்கவும் உதவும் எளிய LMS.
- * Version: 1.0.6
+ * Version: 1.0.7
  * Author: Class Portal
  * Text Domain: class-portal-lms
  */
@@ -11,7 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'CPLMS_VERSION', '1.0.6' );
+define( 'CPLMS_VERSION', '1.0.7' );
 define( 'CPLMS_MAX_RECORDING_VIEWS', 3 );
 define( 'CPLMS_PATH', plugin_dir_path( __FILE__ ) );
 define( 'CPLMS_URL', plugin_dir_url( __FILE__ ) );
@@ -350,6 +350,38 @@ function cplms_hide_wp_credit() {
 	<?php
 }
 add_action( 'wp_footer', 'cplms_hide_wp_credit', 100 );
+
+/**
+ * Hide the theme's default page-title block on the Class Portal page — the
+ * shortcode already prints its own school-name header, so the WordPress
+ * page title ("Class Portal") above it is redundant.
+ */
+function cplms_hide_page_title() {
+	if ( is_page( 'class-portal' ) ) {
+		echo '<style id="cplms-hide-title">.wp-block-post-title{display:none!important}</style>';
+	}
+}
+add_action( 'wp_head', 'cplms_hide_page_title', 100 );
+
+/**
+ * Make the theme's site title/logo in the header non-clickable. Since the
+ * Class Portal page is the homepage, an accidental tap on it just reloads
+ * the page and resets a student back to the access-code screen — this
+ * keeps the text/logo visible but stops it from navigating away.
+ */
+function cplms_disable_site_title_link() {
+	?>
+	<script>
+	document.addEventListener('DOMContentLoaded', function () {
+		document.querySelectorAll('.wp-block-site-title a, .site-title a, .wp-block-site-logo a').forEach(function (a) {
+			a.removeAttribute('href');
+			a.style.cursor = 'default';
+		});
+	});
+	</script>
+	<?php
+}
+add_action( 'wp_footer', 'cplms_disable_site_title_link', 100 );
 
 /**
  * Floating WhatsApp button shown on every front-end page (bottom-right),
