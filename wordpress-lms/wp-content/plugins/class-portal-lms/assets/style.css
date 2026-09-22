@@ -1,0 +1,251 @@
+.cplms-wrap {
+	max-width: 960px;
+	margin: 0 auto;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+	padding: 8px 4px 32px;
+}
+
+.cplms-header {
+	text-align: center;
+	margin: 0 0 28px;
+	padding: 36px 20px;
+	border-radius: 18px;
+	background: linear-gradient(135deg, #6d28d9 0%, #db2777 55%, #f59e0b 100%);
+	color: #fff;
+	box-shadow: 0 10px 30px rgba(109, 40, 217, 0.25);
+}
+
+.cplms-header h2 {
+	margin: 0 0 6px;
+	font-size: 28px;
+	font-weight: 800;
+	color: #fff;
+}
+
+.cplms-tagline {
+	margin: 0;
+	color: rgba(255, 255, 255, 0.9);
+	font-size: 15px;
+}
+
+.cplms-login-form {
+	max-width: 380px;
+	margin: 0 auto;
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	background: #fff;
+	padding: 28px 24px;
+	border-radius: 16px;
+	box-shadow: 0 8px 24px rgba(17, 24, 39, 0.08);
+	border: 1px solid #f0eefc;
+}
+
+.cplms-login-form label {
+	font-weight: 600;
+	color: #3f3f46;
+}
+
+.cplms-login-form input[type="text"] {
+	padding: 12px 14px;
+	border: 2px solid #e5e0fa;
+	border-radius: 10px;
+	font-size: 17px;
+	letter-spacing: 1px;
+	text-align: center;
+	transition: border-color 0.15s ease;
+}
+
+.cplms-login-form input[type="text"]:focus {
+	outline: none;
+	border-color: #7c3aed;
+}
+
+.cplms-btn {
+	display: inline-block;
+	padding: 12px 20px;
+	background: linear-gradient(135deg, #7c3aed, #db2777);
+	color: #fff !important;
+	border: none;
+	border-radius: 10px;
+	cursor: pointer;
+	font-size: 15px;
+	font-weight: 700;
+	text-decoration: none;
+	text-align: center;
+	box-shadow: 0 6px 16px rgba(124, 58, 237, 0.3);
+	transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.cplms-btn:hover {
+	transform: translateY(-1px);
+	box-shadow: 0 8px 20px rgba(124, 58, 237, 0.4);
+	color: #fff !important;
+}
+
+.cplms-btn-zoom {
+	background: linear-gradient(135deg, #059669, #10b981);
+	box-shadow: 0 6px 16px rgba(5, 150, 105, 0.3);
+	width: 100%;
+	box-sizing: border-box;
+}
+
+.cplms-error {
+	color: #dc2626;
+	font-size: 14px;
+	font-weight: 600;
+	text-align: center;
+	margin: 0;
+}
+
+.cplms-welcome {
+	font-size: 20px;
+	margin: 4px 4px 18px;
+	color: #3f3f46;
+}
+
+.cplms-welcome strong {
+	color: #7c3aed;
+}
+
+.cplms-subjects {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+	gap: 18px;
+	padding: 0 2px;
+}
+
+.cplms-subject-card {
+	border-radius: 16px;
+	padding: 20px;
+	background: #fff;
+	box-shadow: 0 6px 20px rgba(17, 24, 39, 0.08);
+	border-top: 5px solid #7c3aed;
+	transition: transform 0.15s ease;
+}
+
+.cplms-subject-card:nth-child(6n + 2) { border-top-color: #db2777; }
+.cplms-subject-card:nth-child(6n + 3) { border-top-color: #059669; }
+.cplms-subject-card:nth-child(6n + 4) { border-top-color: #f59e0b; }
+.cplms-subject-card:nth-child(6n + 5) { border-top-color: #2563eb; }
+.cplms-subject-card:nth-child(6n + 6) { border-top-color: #e11d48; }
+
+.cplms-subject-card:hover {
+	transform: translateY(-3px);
+}
+
+.cplms-subject-card h3 {
+	margin: 0 0 14px;
+	font-size: 19px;
+	color: #18181b;
+}
+
+.cplms-list {
+	margin-top: 14px;
+}
+
+.cplms-list strong {
+	display: block;
+	font-size: 12px;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	color: #9333ea;
+	margin-bottom: 6px;
+}
+
+.cplms-list ul {
+	margin: 0;
+	padding-left: 0;
+	list-style: none;
+}
+
+.cplms-list li {
+	margin-bottom: 6px;
+}
+
+.cplms-list a {
+	color: #3730a3;
+	text-decoration: none;
+	font-weight: 500;
+	word-break: break-word;
+	overflow-wrap: break-word;
+}
+
+.cplms-list a:hover {
+	text-decoration: underline;
+}
+
+.cplms-logout {
+	display: inline-block;
+	margin: 24px 4px 0;
+	color: #7c3aed;
+	font-weight: 600;
+	text-decoration: none;
+}
+
+.cplms-logout:hover {
+	text-decoration: underline;
+}
+
+.cplms-views-left {
+	font-size: 12px;
+	color: #9333ea;
+	margin-left: 4px;
+}
+
+.cplms-limit-reached {
+	color: #9ca3af;
+	text-decoration: line-through;
+}
+
+.cplms-admin-login {
+	text-align: center;
+	margin-top: 28px;
+	font-size: 12px;
+}
+
+.cplms-admin-login a {
+	color: #9ca3af;
+	text-decoration: none;
+}
+
+.cplms-admin-login a:hover {
+	color: #7c3aed;
+	text-decoration: underline;
+}
+
+.cplms-whatsapp-float {
+	position: fixed;
+	right: 20px;
+	bottom: 20px;
+	width: 58px;
+	height: 58px;
+	background: #25d366;
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	box-shadow: 0 6px 18px rgba(37, 211, 102, 0.5);
+	z-index: 9999;
+	animation: cplms-wa-pulse 2.2s infinite;
+	text-decoration: none;
+}
+
+.cplms-whatsapp-float:hover {
+	background: #1ebe5b;
+}
+
+@keyframes cplms-wa-pulse {
+	0% { box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.55); }
+	70% { box-shadow: 0 0 0 14px rgba(37, 211, 102, 0); }
+	100% { box-shadow: 0 0 0 0 rgba(37, 211, 102, 0); }
+}
+
+@media (max-width: 480px) {
+	.cplms-header {
+		padding: 26px 16px;
+	}
+	.cplms-header h2 {
+		font-size: 22px;
+	}
+}
