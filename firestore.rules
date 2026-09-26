@@ -111,18 +111,30 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // A plain mutual-interest signal between two members -- like/pass, not
+    // a message and not a way to reveal a phone number or photo (those stay
+    // behind the separate package/unlock system). Only signed-in members
+    // can send or receive one, identified by their own profile.
     match /interests/{interestId} {
-      allow create: if request.resource.data.profileId is string
-                    && request.resource.data.requesterName is string
-                    && request.resource.data.requesterName.size() > 0
-                    && request.resource.data.requesterPhone is string
-                    && request.resource.data.requesterPhone.size() > 0;
-      // Visible to: the admin, whoever sent the request (if logged in when
-      // they sent it), and the profile owner it was sent to — nobody else.
+      allow create: if request.auth != null
+                    && request.resource.data.requesterUid == request.auth.uid
+                    && request.resource.data.profileId is string
+                    && request.resource.data.requesterProfileId is string
+                    && request.resource.data.status == 'pending';
+      // Visible to: the admin, whoever sent the request, and the profile
+      // owner it was sent to — nobody else.
       allow read: if isAdmin()
                   || (request.auth != null && resource.data.requesterUid == request.auth.uid)
                   || (request.auth != null && resource.data.recipientUid == request.auth.uid);
-      allow update, delete: if isAdmin();
+      // The recipient may only accept/reject a still-pending request —
+      // nothing else about it, and not a second time once decided. Admin
+      // can change or delete anything.
+      allow update: if isAdmin()
+                    || (request.auth != null && resource.data.recipientUid == request.auth.uid
+                        && resource.data.status == 'pending'
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+                        && request.resource.data.status in ['accepted', 'rejected']);
+      allow delete: if isAdmin();
     }
 
     match /{document=**} {
