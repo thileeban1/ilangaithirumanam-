@@ -135,6 +135,7 @@ const EMPTY_INTEREST = { requesterName: "", requesterPhone: "", message: "" };
 const DEFAULT_SETTINGS = {
   siteName: "இலங்கை தமிழர் திருமண மையம்",
   tagline: "நம்பிக்கையுடன் ஒரு புதிய தொடக்கம்",
+  adminWhatsapp: "0752495266",
 };
 
 const PROFILES_COLLECTION = "profiles";
@@ -172,6 +173,16 @@ const PACKAGES_DOC = "packages";
 const MEMBER_EMAIL_DOMAIN = "members.lanka-matrimony.app";
 const digitsOnly = (s) => (s || "").replace(/\D/g, "");
 const memberEmailFromPhone = (phone) => `m${digitsOnly(phone)}@${MEMBER_EMAIL_DOMAIN}`;
+
+// Converts a local Sri Lankan number (07XXXXXXXX) or an already-international
+// one to the digits-only, country-code-prefixed form WhatsApp's wa.me links
+// need, e.g. "0752495266" -> "94752495266".
+const waLink = (phone, text) => {
+  let digits = digitsOnly(phone);
+  if (digits.startsWith("0")) digits = "94" + digits.slice(1);
+  else if (!digits.startsWith("94")) digits = "94" + digits;
+  return `https://wa.me/${digits}${text ? `?text=${encodeURIComponent(text)}` : ""}`;
+};
 
 const STATUS_LABELS = { pending: "பரிசீலனையில்", approved: "ஏற்றுக்கொள்ளப்பட்டது", rejected: "நிராகரிக்கப்பட்டது" };
 
@@ -492,6 +503,7 @@ export default function MatrimonyApp() {
   const [editDraftMember, setEditDraftMember] = useState(null);
   const [nameDraft, setNameDraft] = useState("");
   const [taglineDraft, setTaglineDraft] = useState("");
+  const [whatsappDraft, setWhatsappDraft] = useState("");
 
   useEffect(() => {
     if (!firebaseConfigured || !auth) {
@@ -521,6 +533,7 @@ export default function MatrimonyApp() {
         setSettings(merged);
         setNameDraft((v) => v || merged.siteName || "");
         setTaglineDraft((v) => v || merged.tagline || "");
+        setWhatsappDraft((v) => v || merged.adminWhatsapp || "");
         settingsLoaded = true;
         maybeDone();
       },
@@ -1051,7 +1064,11 @@ export default function MatrimonyApp() {
     try {
       await setDoc(
         doc(db, "settings", SETTINGS_DOC),
-        { siteName: nameDraft.trim() || DEFAULT_SETTINGS.siteName, tagline: taglineDraft.trim() },
+        {
+          siteName: nameDraft.trim() || DEFAULT_SETTINGS.siteName,
+          tagline: taglineDraft.trim(),
+          adminWhatsapp: whatsappDraft.trim(),
+        },
         { merge: true }
       );
       flash("அமைப்புகள் சேமிக்கப்பட்டன");
@@ -1142,6 +1159,18 @@ export default function MatrimonyApp() {
             </p>
           </div>
         </div>
+        {settings.adminWhatsapp && (
+          <div style={{ padding: "0 18px" }}>
+            <a
+              href={waLink(settings.adminWhatsapp, `வணக்கம், ${settings.siteName} பற்றி விசாரிக்க விரும்புகிறேன்.`)}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ ...styles.btnGhost, boxSizing: "border-box", textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+            >
+              💬 WhatsApp-ல் தொடர்பு கொள்ள
+            </a>
+          </div>
+        )}
       </div>
     );
   }
@@ -1524,7 +1553,32 @@ export default function MatrimonyApp() {
             </>
           )}
           {!myMember?.package && (
-            <p style={{ color: "#9FB0CE", fontSize: 12.5, margin: 0 }}>Package வாங்க நிர்வாகியை தொடர்பு கொள்ளவும் (Pro / Super Pro / Mega Pro).</p>
+            <p style={{ color: "#9FB0CE", fontSize: 12.5, margin: 0 }}>கீழே உள்ள Package-களில் ஒன்றை தேர்ந்தெடுத்து, WhatsApp மூலம் நிர்வாகியை தொடர்பு கொள்ளவும்.</p>
+          )}
+        </div>
+
+        <div style={styles.card}>
+          <div style={styles.eyebrow}>Package விபரங்கள்</div>
+          {Object.values(packages).map((pkg) => (
+            <div key={pkg.key} style={{ padding: "10px 0", borderBottom: "1px solid #1E2A44" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                <div style={{ fontWeight: 700, color: "#F6F8FC" }}>{pkg.label}</div>
+                <div style={{ color: "#F2A93B", fontFamily: "'IBM Plex Mono',monospace" }}>₹{pkg.price} / {pkg.months} மாதம்</div>
+              </div>
+              <div style={{ color: "#9FB0CE", fontSize: 12.5, marginTop: 3 }}>
+                {pkg.photoQuota} Photo Unlocks • {pkg.phoneQuota} Phone Unlocks
+              </div>
+            </div>
+          ))}
+          {settings.adminWhatsapp && (
+            <a
+              href={waLink(settings.adminWhatsapp, `வணக்கம், எனது Profile ID ${myProfile?.memberId ?? ""} - எனக்கு ஒரு Package வாங்க விரும்புகிறேன்.`)}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ ...styles.btnGhost, boxSizing: "border-box", textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 14 }}
+            >
+              💬 WhatsApp-ல் நிர்வாகியை தொடர்பு கொள்ள
+            </a>
           )}
         </div>
 
@@ -1751,6 +1805,8 @@ export default function MatrimonyApp() {
               <input style={styles.input} value={nameDraft} onChange={(e) => setNameDraft(e.target.value)} />
               <label style={styles.label}>Tagline</label>
               <input style={styles.input} value={taglineDraft} onChange={(e) => setTaglineDraft(e.target.value)} />
+              <label style={styles.label}>நிர்வாகி WhatsApp எண் (Package கேட்பவர்கள் இதற்கு மெசேஜ் அனுப்புவார்கள்)</label>
+              <input style={styles.input} value={whatsappDraft} onChange={(e) => setWhatsappDraft(e.target.value)} placeholder="07XXXXXXXX" />
               <button style={styles.btnGhost} onClick={saveSiteSettings}>அமைப்புகளை சேமிக்க</button>
             </div>
 
