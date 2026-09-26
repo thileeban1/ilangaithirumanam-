@@ -197,24 +197,24 @@ const assignMemberId = async () => {
 
 // ---------- styles (static, defined once) ----------
 const styles = {
-  page: { minHeight: "100vh", background: "#0B0F16", fontFamily: "'Inter','Noto Sans Tamil',sans-serif", color: "#EAF0FA", paddingBottom: 50, boxSizing: "border-box" },
-  header: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 18px", borderBottom: "1px solid #1B2436", position: "sticky", top: 0, background: "#0B0F16", zIndex: 5, gap: 10 },
-  brandBox: { background: "#F4F1EA", color: "#0B0F16", borderRadius: 8, padding: "8px 14px", fontFamily: "'Fraunces',serif", fontWeight: 700, fontSize: 14, maxWidth: 190, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
-  pill: { border: "1.5px solid #3A4A6B", color: "#AEBEDD", borderRadius: 999, padding: "7px 16px", fontSize: 12.5, fontFamily: "'IBM Plex Mono',monospace", whiteSpace: "nowrap" },
-  banner: { margin: "18px 18px 0", borderRadius: 16, padding: "26px 22px", background: "linear-gradient(135deg,#5C1E3A 0%,#3A1030 60%,#1F0A22 100%)", border: "1px solid #6E2B4E" },
-  eyebrow: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 11.5, letterSpacing: "0.16em", color: "#F2A93B", textTransform: "uppercase", marginBottom: 8 },
-  h1: { fontFamily: "'Fraunces',serif", fontWeight: 600, fontSize: 25, lineHeight: 1.25, margin: "0 0 8px", color: "#F6F8FC", textWrap: "balance" },
-  h2: { fontFamily: "'Fraunces',serif", fontWeight: 600, fontSize: 18, margin: "0 0 4px", color: "#F6F8FC" },
-  sub: { color: "#D9B8CC", fontSize: 14, lineHeight: 1.55, margin: 0 },
+  page: { minHeight: "100vh", background: "#FCF6EA", fontFamily: "'Inter','Noto Sans Tamil',sans-serif", color: "#2E1B12", paddingBottom: 50, boxSizing: "border-box" },
+  header: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 18px", borderBottom: "1px solid #EFDFC0", position: "sticky", top: 0, background: "#FCF6EA", zIndex: 5, gap: 10 },
+  brandBox: { background: "#FFFFFF", color: "#7A1F3D", border: "1px solid #E3CCA0", borderRadius: 8, padding: "8px 14px", fontFamily: "'Fraunces',serif", fontWeight: 700, fontSize: 14, maxWidth: 190, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
+  pill: { border: "1.5px solid #D8B978", color: "#6B4A22", background: "#FFFFFF", borderRadius: 999, padding: "7px 16px", fontSize: 12.5, fontFamily: "'IBM Plex Mono',monospace", whiteSpace: "nowrap" },
+  banner: { margin: "18px 18px 0", borderRadius: 16, padding: "26px 22px", background: "linear-gradient(135deg,#6B1A38 0%,#8B2748 55%,#7A1F3D 100%)", border: "1px solid #D8B978" },
+  eyebrow: { fontFamily: "'IBM Plex Mono',monospace", fontSize: 11.5, letterSpacing: "0.16em", color: "#A9720F", textTransform: "uppercase", marginBottom: 8 },
+  h1: { fontFamily: "'Fraunces',serif", fontWeight: 600, fontSize: 25, lineHeight: 1.25, margin: "0 0 8px", color: "#6B1A38", textWrap: "balance" },
+  h2: { fontFamily: "'Fraunces',serif", fontWeight: 600, fontSize: 18, margin: "0 0 4px", color: "#6B1A38" },
+  sub: { color: "#7A6353", fontSize: 14, lineHeight: 1.55, margin: 0 },
   section: { padding: "22px 18px 0" },
-  sectionTitle: { fontFamily: "'Fraunces',serif", fontSize: 19, fontWeight: 600, margin: "0 0 14px", color: "#F6F8FC" },
-  roleCard: { display: "flex", alignItems: "center", gap: 14, width: "100%", textAlign: "left", padding: "18px", borderRadius: 16, border: "1px solid #6E2B4E", background: "linear-gradient(160deg,#5C1E3A 0%,#2A0E24 100%)", color: "#F6F8FC", marginBottom: 14, cursor: "pointer", fontSize: 16.5, fontFamily: "'Fraunces',serif" },
-  card: { background: "#111A2C", border: "1px solid #1E2A44", borderRadius: 16, padding: "20px", margin: "0 18px 16px" },
-  label: { fontSize: 13, color: "#8FA0C2", display: "block", marginBottom: 8, fontWeight: 600 },
-  input: { width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 10, border: "1.5px solid #263354", background: "#0B1220", color: "#EAF0FA", fontSize: 14.5, marginBottom: 12, fontFamily: "inherit" },
-  textarea: { width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 10, border: "1.5px solid #263354", background: "#0B1220", color: "#EAF0FA", fontSize: 14.5, marginBottom: 12, fontFamily: "inherit", minHeight: 90, resize: "vertical" },
-  btnPrimary: { width: "100%", padding: "13px 16px", borderRadius: 999, border: "none", background: "#C23B6B", color: "#fff", fontSize: 14.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" },
-  btnGhost: { width: "100%", padding: "12px 16px", borderRadius: 999, border: "1.5px solid #C23B6B", background: "transparent", color: "#F0A9C4", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" },
+  sectionTitle: { fontFamily: "'Fraunces',serif", fontSize: 19, fontWeight: 600, margin: "0 0 14px", color: "#6B1A38" },
+  roleCard: { display: "flex", alignItems: "center", gap: 14, width: "100%", textAlign: "left", padding: "18px", borderRadius: 16, border: "1px solid #A67A24", background: "linear-gradient(135deg,#E9C36B 0%,#C9973B 100%)", color: "#4A1020", marginBottom: 14, cursor: "pointer", fontSize: 16.5, fontFamily: "'Fraunces',serif", boxShadow: "0 6px 16px -6px rgba(201,151,59,0.55)" },
+  card: { background: "#FFFFFF", border: "1px solid #EFDFC0", borderRadius: 16, padding: "20px", margin: "0 18px 16px" },
+  label: { fontSize: 13, color: "#8A6D4E", display: "block", marginBottom: 8, fontWeight: 600 },
+  input: { width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 10, border: "1.5px solid #E3CCA0", background: "#FFFDF8", color: "#2E1B12", fontSize: 14.5, marginBottom: 12, fontFamily: "inherit" },
+  textarea: { width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 10, border: "1.5px solid #E3CCA0", background: "#FFFDF8", color: "#2E1B12", fontSize: 14.5, marginBottom: 12, fontFamily: "inherit", minHeight: 90, resize: "vertical" },
+  btnPrimary: { width: "100%", padding: "13px 16px", borderRadius: 999, border: "none", background: "linear-gradient(135deg,#E9C36B 0%,#C9973B 100%)", color: "#4A1020", fontSize: 14.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", boxShadow: "0 4px 14px -4px rgba(201,151,59,0.6)" },
+  btnGhost: { width: "100%", padding: "12px 16px", borderRadius: 999, border: "1.5px solid #7A1F3D", background: "transparent", color: "#7A1F3D", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" },
   btnWhatsapp: {
     width: "100%",
     boxSizing: "border-box",
@@ -234,32 +234,32 @@ const styles = {
     gap: 9,
     boxShadow: "0 6px 18px -6px rgba(37, 211, 102, 0.55)",
   },
-  row: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: "1px solid #1E2A44" },
-  linkBtn: { color: "#F0A9C4", background: "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, padding: 0, fontFamily: "inherit" },
-  dangerBtn: { color: "#E4677E", background: "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, padding: 0, fontFamily: "inherit" },
-  okBtn: { color: "#8ADB9A", background: "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, padding: 0, fontFamily: "inherit" },
-  errBox: { background: "#3A1620", border: "1px solid #C0435A", color: "#FFC9D2", padding: "11px 14px", borderRadius: 10, fontSize: 13.5, margin: "0 18px 16px" },
-  flash: { background: "#1A2E17", border: "1px solid #4E8A3E", color: "#C9F2BC", padding: "9px 14px", borderRadius: 10, fontSize: 13, margin: "0 18px 16px" },
-  backBar: { background: "none", border: "none", color: "#7C8CAE", fontSize: 13, cursor: "pointer", padding: "14px 18px 0", fontFamily: "'IBM Plex Mono',monospace", display: "block" },
-  profileCard: { background: "#111A2C", border: "1px solid #1E2A44", borderRadius: 14, padding: "16px", margin: "0 18px 12px", display: "flex", gap: 14, alignItems: "center", cursor: "pointer", textAlign: "left", width: "calc(100% - 36px)" },
-  avatar: { width: 56, height: 56, borderRadius: "50%", background: "linear-gradient(160deg,#5C1E3A,#2A0E24)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0, overflow: "hidden", border: "1px solid #6E2B4E" },
+  row: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: "1px solid #EFDFC0" },
+  linkBtn: { color: "#7A1F3D", background: "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, padding: 0, fontFamily: "inherit" },
+  dangerBtn: { color: "#B23A48", background: "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, padding: 0, fontFamily: "inherit" },
+  okBtn: { color: "#2F7D4F", background: "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, padding: 0, fontFamily: "inherit" },
+  errBox: { background: "#FDECEC", border: "1px solid #E8A9A9", color: "#8A2C2C", padding: "11px 14px", borderRadius: 10, fontSize: 13.5, margin: "0 18px 16px" },
+  flash: { background: "#EAF7EE", border: "1px solid #8FCB9F", color: "#1F5C34", padding: "9px 14px", borderRadius: 10, fontSize: 13, margin: "0 18px 16px" },
+  backBar: { background: "none", border: "none", color: "#9C8874", fontSize: 13, cursor: "pointer", padding: "14px 18px 0", fontFamily: "'IBM Plex Mono',monospace", display: "block" },
+  profileCard: { background: "#FFFFFF", border: "1px solid #EFDFC0", borderRadius: 14, padding: "16px", margin: "0 18px 12px", display: "flex", gap: 14, alignItems: "center", cursor: "pointer", textAlign: "left", width: "calc(100% - 36px)" },
+  avatar: { width: 56, height: 56, borderRadius: "50%", background: "linear-gradient(160deg,#F6E3B4,#EAC97A)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0, overflow: "hidden", border: "1px solid #D8B978" },
   tabBar: { display: "flex", gap: 8, overflowX: "auto", padding: "0 18px 14px" },
   tabBtn: (active) => ({
     padding: "9px 16px",
     borderRadius: 999,
-    border: active ? "1.5px solid #C23B6B" : "1.5px solid #263354",
-    background: active ? "#3A1030" : "transparent",
-    color: active ? "#F0A9C4" : "#8FA0C2",
+    border: active ? "1.5px solid #7A1F3D" : "1.5px solid #E3CCA0",
+    background: active ? "#FBF0D9" : "transparent",
+    color: active ? "#7A1F3D" : "#8A6D4E",
     fontSize: 13,
     fontWeight: 700,
     cursor: "pointer",
     fontFamily: "inherit",
     whiteSpace: "nowrap",
   }),
-  badge: { fontSize: 11, fontFamily: "'IBM Plex Mono',monospace", color: "#F2A93B", background: "#241B0D", border: "1px solid #4A3A17", padding: "3px 8px", borderRadius: 6 },
+  badge: { fontSize: 11, fontFamily: "'IBM Plex Mono',monospace", color: "#8A5A12", background: "#FBF0D9", border: "1px solid #E3C179", padding: "3px 8px", borderRadius: 6 },
   infoGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 14px", margin: "12px 0" },
-  infoLabel: { fontSize: 11.5, color: "#7C8CAE", textTransform: "uppercase", letterSpacing: "0.05em" },
-  infoValue: { fontSize: 14, color: "#EAF0FA", marginBottom: 6 },
+  infoLabel: { fontSize: 11.5, color: "#9C8874", textTransform: "uppercase", letterSpacing: "0.05em" },
+  infoValue: { fontSize: 14, color: "#2E1B12", marginBottom: 6 },
 };
 
 // ---------- shared components (top-level, so typing in their inputs never
@@ -289,6 +289,20 @@ function WhatsAppIcon() {
     <svg width="19" height="19" viewBox="0 0 24 24" fill="#04240F" aria-hidden="true">
       <path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.25-.46-2.38-1.47-.88-.78-1.47-1.75-1.65-2.05-.17-.3-.02-.46.13-.61.14-.14.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51-.17-.01-.37-.01-.57-.01s-.52.07-.8.37c-.27.3-1.04 1.02-1.04 2.5s1.07 2.9 1.22 3.1c.15.2 2.1 3.21 5.1 4.5.71.31 1.27.49 1.7.62.72.23 1.37.2 1.89.12.58-.09 1.76-.72 2-1.41.25-.7.25-1.29.17-1.41-.07-.12-.27-.2-.57-.35z" />
       <path d="M12.02 2C6.5 2 2 6.48 2 12c0 1.85.5 3.58 1.36 5.08L2 22l5.06-1.33A9.96 9.96 0 0 0 12.02 22C17.53 22 22 17.52 22 12S17.53 2 12.02 2zm0 18.2c-1.62 0-3.13-.44-4.43-1.21l-.32-.19-3 .79.8-2.92-.21-.3A8.17 8.17 0 0 1 3.8 12c0-4.53 3.7-8.2 8.22-8.2 4.52 0 8.2 3.67 8.2 8.2 0 4.53-3.68 8.2-8.2 8.2z" />
+    </svg>
+  );
+}
+
+// A small decorative wedding-rings illustration for the home hero banner —
+// drawn inline as SVG (no external image asset needed) in soft gold tones
+// that read well against the banner's maroon-gold gradient.
+function WeddingRingsIllustration({ style }) {
+  return (
+    <svg width="96" height="72" viewBox="0 0 96 72" fill="none" aria-hidden="true" style={style}>
+      <circle cx="36" cy="40" r="22" stroke="#F6E3B4" strokeWidth="4" opacity="0.9" />
+      <circle cx="60" cy="40" r="22" stroke="#FBEFD4" strokeWidth="4" opacity="0.7" />
+      <path d="M40 16 L44 24 L36 24 Z" fill="#F6E3B4" opacity="0.9" />
+      <circle cx="40" cy="14" r="2.5" fill="#F6E3B4" opacity="0.9" />
     </svg>
   );
 }
@@ -443,12 +457,12 @@ function ProfileFormFields({ value, onChange, onAddPhoto, onRemovePhoto, photoUp
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
           {value.photoUrls.map((url, i) => (
             <div key={i} style={{ position: "relative" }}>
-              <img src={url} alt={`preview ${i + 1}`} style={{ width: 84, height: 84, borderRadius: 12, objectFit: "cover", border: "1px solid #263354", display: "block" }} />
+              <img src={url} alt={`preview ${i + 1}`} style={{ width: 84, height: 84, borderRadius: 12, objectFit: "cover", border: "1px solid #E3CCA0", display: "block" }} />
               <button
                 type="button"
                 onClick={() => onRemovePhoto(i, value, onChange)}
                 aria-label="படத்தை நீக்க"
-                style={{ position: "absolute", top: -6, right: -6, width: 22, height: 22, borderRadius: "50%", border: "none", background: "#C23B6B", color: "#fff", fontSize: 13, lineHeight: "22px", padding: 0, cursor: "pointer" }}
+                style={{ position: "absolute", top: -6, right: -6, width: 22, height: 22, borderRadius: "50%", border: "none", background: "#B23A48", color: "#fff", fontSize: 13, lineHeight: "22px", padding: 0, cursor: "pointer" }}
               >
                 ×
               </button>
@@ -467,7 +481,7 @@ function ProfileFormFields({ value, onChange, onAddPhoto, onRemovePhoto, photoUp
           }}
         />
       )}
-      {photoUploading && <div style={{ color: "#9FB0CE", fontSize: 12.5, marginTop: -8, marginBottom: 12 }}>படத்தை சேர்க்கிறது…</div>}
+      {photoUploading && <div style={{ color: "#7A6353", fontSize: 12.5, marginTop: -8, marginBottom: 12 }}>படத்தை சேர்க்கிறது…</div>}
 
       <label style={styles.label}>தன்னைப் பற்றி</label>
       <textarea style={styles.textarea} value={value.about} onChange={(e) => onChange({ ...value, about: e.target.value })} placeholder="குடும்பம், பொழுதுபோக்கு, எதிர்பார்ப்பு போன்றவை..." />
@@ -1162,7 +1176,7 @@ export default function MatrimonyApp() {
           <h1 style={styles.h1}>Firebase இணைக்கப்படவில்லை</h1>
         </div>
         <div style={styles.card}>
-          <p style={{ color: "#9FB0CE", fontSize: 14.5, lineHeight: 1.6 }}>
+          <p style={{ color: "#7A6353", fontSize: 14.5, lineHeight: 1.6 }}>
             இந்த வெப்சைட் தரவை சேமிக்க Firebase Firestore-ஐ பயன்படுத்துகிறது. <code>.env</code> கோப்பில்{" "}
             <code>VITE_FIREBASE_*</code> மதிப்புகளை நிரப்பி மீண்டும் இயக்கவும் — விவரங்களுக்கு{" "}
             <code>README.md</code>-ஐ பார்க்கவும்.
@@ -1186,23 +1200,24 @@ export default function MatrimonyApp() {
     return (
       <div style={styles.page}>
         <Header siteName={settings.siteName} onAdminClick={goAdmin} />
-        <div style={styles.banner}>
-          <div style={styles.eyebrow}>வரவேற்கிறோம்</div>
-          <h1 style={styles.h1}>{settings.siteName}</h1>
-          <p style={styles.sub}>{settings.tagline}</p>
+        <div style={{ ...styles.banner, position: "relative", overflow: "hidden" }}>
+          <WeddingRingsIllustration style={{ position: "absolute", top: 10, right: 10 }} />
+          <div style={{ ...styles.eyebrow, color: "#F6E3B4" }}>வரவேற்கிறோம் (Welcome)</div>
+          <h1 style={{ ...styles.h1, color: "#FFF6E6" }}>{settings.siteName}</h1>
+          <p style={{ ...styles.sub, color: "#F1D9C9" }}>{settings.tagline}</p>
         </div>
         <div style={styles.section}>
-          <div style={styles.sectionTitle}>தொடர்வது எப்படி?</div>
+          <div style={styles.sectionTitle}>தொடர்வது எப்படி? (Get Started)</div>
           <button style={styles.roleCard} onClick={() => { setError(""); setRegisterDone(false); setScreen("register"); }}>
-            <span style={{ fontSize: 26 }}>📝</span><span>சுயவிவரம் பதிவு செய்ய</span>
+            <span style={{ fontSize: 26 }}>📝</span><span>சுயவிவரம் பதிவு செய்ய (Register)</span>
           </button>
           <button style={styles.roleCard} onClick={goMemberArea}>
-            <span style={{ fontSize: 26 }}>👤</span><span>உறுப்பினர் / எனது Dashboard</span>
+            <span style={{ fontSize: 26 }}>👤</span><span>உறுப்பினர் (Login) / Dashboard</span>
           </button>
         </div>
         <div style={styles.section}>
           <div style={{ ...styles.card, margin: 0 }}>
-            <p style={{ color: "#9FB0CE", fontSize: 13.5, lineHeight: 1.6, margin: 0 }}>
+            <p style={{ color: "#7A6353", fontSize: 13.5, lineHeight: 1.6, margin: 0 }}>
               நீங்கள் பதிவு செய்யும் சுயவிவரம் நிர்வாகியால் பரிசீலிக்கப்பட்ட பின் மட்டுமே பொதுவில் காணப்படும்.
             </p>
           </div>
@@ -1238,10 +1253,10 @@ export default function MatrimonyApp() {
             {registeredMemberId && (
               <>
                 <div style={styles.infoLabel}>உங்கள் Profile ID</div>
-                <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 26, fontWeight: 700, color: "#F2A93B", marginBottom: 14 }}>{registeredMemberId}</div>
+                <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 26, fontWeight: 700, color: "#A9720F", marginBottom: 14 }}>{registeredMemberId}</div>
               </>
             )}
-            <p style={{ color: "#9FB0CE", fontSize: 14.5, lineHeight: 1.6, margin: 0 }}>
+            <p style={{ color: "#7A6353", fontSize: 14.5, lineHeight: 1.6, margin: 0 }}>
               நிர்வாகி பரிசீலித்து ஏற்றுக்கொண்ட பின் உங்கள் சுயவிவரம் பொதுவில் காணப்படும். உங்கள் தொடர்பு எண் + கடவுச்சொல் வைத்து "உறுப்பினர்" பட்டன் மூலம் எப்போதும் login செய்து உங்கள் status-ஐ பார்க்கலாம்.
             </p>
           </div>
@@ -1317,7 +1332,7 @@ export default function MatrimonyApp() {
 
         {filteredProfiles.length === 0 && (
           <div style={styles.card}>
-            <p style={{ color: "#9FB0CE", fontSize: 14, margin: 0 }}>பொருந்தும் சுயவிவரங்கள் இல்லை.</p>
+            <p style={{ color: "#7A6353", fontSize: 14, margin: 0 }}>பொருந்தும் சுயவிவரங்கள் இல்லை.</p>
           </div>
         )}
 
@@ -1328,8 +1343,8 @@ export default function MatrimonyApp() {
             <button key={p.id} style={styles.profileCard} onClick={() => { setSelectedProfileId(p.id); setScreen("profile"); }}>
               <div style={styles.avatar}>{unlocked ? (p.gender === "பெண்" ? "👰" : "🤵") : "🔒"}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontFamily: "'Fraunces',serif", fontWeight: 700, fontSize: 16, color: "#F6F8FC" }}>Profile #{p.memberId ?? "-"}</div>
-                <div style={{ color: "#9FB0CE", fontSize: 13 }}>
+                <div style={{ fontFamily: "'Fraunces',serif", fontWeight: 700, fontSize: 16, color: "#6B1A38" }}>Profile #{p.memberId ?? "-"}</div>
+                <div style={{ color: "#7A6353", fontSize: 13 }}>
                   {age !== null ? `${age} வயது` : ""}{p.district ? ` • ${p.district}` : ""}{p.profession ? ` • ${p.profession}` : ""}
                 </div>
               </div>
@@ -1375,7 +1390,7 @@ export default function MatrimonyApp() {
               {photos.slice(1).map((url, i) => (
                 <div
                   key={i}
-                  style={{ width: 70, height: 70, borderRadius: 12, overflow: "hidden", border: "1px solid #263354", cursor: "pointer" }}
+                  style={{ width: 70, height: 70, borderRadius: 12, overflow: "hidden", border: "1px solid #E3CCA0", cursor: "pointer" }}
                   onClick={() => setZoomedPhoto({ src: url, alt: `${viewedIdentity?.name || "profile"} ${i + 2}` })}
                 >
                   <ProtectedPhoto src={url} alt={`${viewedIdentity?.name || "profile"} ${i + 2}`} watermark={photoWatermark} />
@@ -1383,18 +1398,18 @@ export default function MatrimonyApp() {
               ))}
             </div>
           )}
-          {photos[0] && <p style={{ color: "#7C8CAE", fontSize: 12, marginTop: 8 }}>புகைப்படத்தை tap செய்து பெரிதாக பார்க்கவும்</p>}
+          {photos[0] && <p style={{ color: "#9C8874", fontSize: 12, marginTop: 8 }}>புகைப்படத்தை tap செய்து பெரிதாக பார்க்கவும்</p>}
         </div>
         {error && <div style={styles.errBox}>{error}</div>}
 
         <div style={styles.card}>
           <div style={styles.eyebrow}>புகைப்படம் & பெயர்</div>
           {viewedIdentity ? (
-            <p style={{ color: "#8ADB9A", fontSize: 13.5, margin: 0 }}>✓ Unlock செய்யப்பட்டது</p>
+            <p style={{ color: "#2F7D4F", fontSize: 13.5, margin: 0 }}>✓ Unlock செய்யப்பட்டது</p>
           ) : (
             <>
-              <p style={{ color: "#9FB0CE", fontSize: 13.5, lineHeight: 1.6 }}>
-                பெயர் மற்றும் புகைப்படத்தை பார்க்க 1 Photo Credit தேவை. {myMember && <>மீதம் உள்ளது: <strong style={{ color: "#F6F8FC" }}>{photoRemaining}</strong></>}
+              <p style={{ color: "#7A6353", fontSize: 13.5, lineHeight: 1.6 }}>
+                பெயர் மற்றும் புகைப்படத்தை பார்க்க 1 Photo Credit தேவை. {myMember && <>மீதம் உள்ளது: <strong style={{ color: "#6B1A38" }}>{photoRemaining}</strong></>}
               </p>
               <button style={styles.btnPrimary} onClick={() => unlockPhoto(p.id)} disabled={!myMember || photoRemaining <= 0}>
                 🔓 புகைப்படம் + பெயர் பார்க்க
@@ -1419,7 +1434,7 @@ export default function MatrimonyApp() {
           {p.about && (
             <>
               <div style={styles.infoLabel}>தன்னைப் பற்றி</div>
-              <p style={{ color: "#EAF0FA", fontSize: 14, lineHeight: 1.6 }}>{p.about}</p>
+              <p style={{ color: "#2E1B12", fontSize: 14, lineHeight: 1.6 }}>{p.about}</p>
             </>
           )}
         </div>
@@ -1432,8 +1447,8 @@ export default function MatrimonyApp() {
             </div>
           ) : (
             <>
-              <p style={{ color: "#9FB0CE", fontSize: 13.5, lineHeight: 1.6 }}>
-                தொடர்பு எண்ணை பார்க்க 1 Phone Credit தேவை. {myMember && <>மீதம் உள்ளது: <strong style={{ color: "#F6F8FC" }}>{phoneRemaining}</strong></>}
+              <p style={{ color: "#7A6353", fontSize: 13.5, lineHeight: 1.6 }}>
+                தொடர்பு எண்ணை பார்க்க 1 Phone Credit தேவை. {myMember && <>மீதம் உள்ளது: <strong style={{ color: "#6B1A38" }}>{phoneRemaining}</strong></>}
               </p>
               <button style={styles.btnPrimary} onClick={() => unlockPhone(p.id)} disabled={!myMember || phoneRemaining <= 0}>
                 🔓 தொடர்பு எண் பார்க்க
@@ -1445,7 +1460,7 @@ export default function MatrimonyApp() {
         {!isOwnProfile && (
           <div style={styles.card}>
             <div style={styles.eyebrow}>விருப்பம்</div>
-            <p style={{ color: "#9FB0CE", fontSize: 13.5, lineHeight: 1.6, marginTop: 0 }}>
+            <p style={{ color: "#7A6353", fontSize: 13.5, lineHeight: 1.6, marginTop: 0 }}>
               இந்த சுயவிவரத்தில் உங்களுக்கு விருப்பம் இருந்தால் தெரிவிக்கவும். இது வெறும் ஒரு "விருப்பம்" குறிப்பு மட்டும் — உங்கள் தொடர்பு எண் அல்லது புகைப்படம் இதனால் யாருக்கும் தெரியாது.
             </p>
             {interestDone ? (
@@ -1466,11 +1481,11 @@ export default function MatrimonyApp() {
             <button
               onClick={() => setZoomedPhoto(null)}
               aria-label="மூட"
-              style={{ position: "absolute", top: 18, right: 18, width: 38, height: 38, borderRadius: "50%", border: "1.5px solid #3A4A6B", background: "rgba(11,18,32,0.8)", color: "#EAF0FA", fontSize: 20, cursor: "pointer", lineHeight: "34px" }}
+              style={{ position: "absolute", top: 18, right: 18, width: 38, height: 38, borderRadius: "50%", border: "1.5px solid #D8B978", background: "rgba(11,18,32,0.8)", color: "#FDF6E3", fontSize: 20, cursor: "pointer", lineHeight: "34px" }}
             >
               ×
             </button>
-            <div style={{ width: "100%", maxWidth: 420, aspectRatio: "1 / 1", borderRadius: 18, overflow: "hidden", border: "1px solid #3A4A6B" }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ width: "100%", maxWidth: 420, aspectRatio: "1 / 1", borderRadius: 18, overflow: "hidden", border: "1px solid #D8B978" }} onClick={(e) => e.stopPropagation()}>
               <ProtectedPhoto src={zoomedPhoto.src} alt={zoomedPhoto.alt} watermark={photoWatermark} />
             </div>
           </div>
@@ -1561,7 +1576,7 @@ export default function MatrimonyApp() {
             {authBusy ? "உள்நுழைகிறது…" : "LOGIN NOW"}
           </button>
           <div style={{ height: 14 }} />
-          <p style={{ color: "#7C8CAE", fontSize: 12.5, margin: 0, textAlign: "center" }}>
+          <p style={{ color: "#9C8874", fontSize: 12.5, margin: 0, textAlign: "center" }}>
             கணக்கு இல்லையா?{" "}
             <button style={{ ...styles.linkBtn, display: "inline" }} onClick={() => { setError(""); setRegisterDone(false); setScreen("register"); }}>
               சுயவிவரம் பதிவு செய்யவும்
@@ -1622,19 +1637,19 @@ export default function MatrimonyApp() {
             </>
           )}
           {!myMember?.package && (
-            <p style={{ color: "#9FB0CE", fontSize: 12.5, margin: 0 }}>கீழே உள்ள Package-களில் ஒன்றை தேர்ந்தெடுத்து, WhatsApp மூலம் நிர்வாகியை தொடர்பு கொள்ளவும்.</p>
+            <p style={{ color: "#7A6353", fontSize: 12.5, margin: 0 }}>கீழே உள்ள Package-களில் ஒன்றை தேர்ந்தெடுத்து, WhatsApp மூலம் நிர்வாகியை தொடர்பு கொள்ளவும்.</p>
           )}
         </div>
 
         <div style={styles.card}>
           <div style={styles.eyebrow}>Package விபரங்கள்</div>
           {Object.values(packages).map((pkg) => (
-            <div key={pkg.key} style={{ padding: "10px 0", borderBottom: "1px solid #1E2A44" }}>
+            <div key={pkg.key} style={{ padding: "10px 0", borderBottom: "1px solid #EFDFC0" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                <div style={{ fontWeight: 700, color: "#F6F8FC" }}>{pkg.label}</div>
-                <div style={{ color: "#F2A93B", fontFamily: "'IBM Plex Mono',monospace" }}>₹{pkg.price} / {pkg.months} மாதம்</div>
+                <div style={{ fontWeight: 700, color: "#6B1A38" }}>{pkg.label}</div>
+                <div style={{ color: "#A9720F", fontFamily: "'IBM Plex Mono',monospace" }}>Rs. {pkg.price} / {pkg.months} மாதம்</div>
               </div>
-              <div style={{ color: "#9FB0CE", fontSize: 12.5, marginTop: 3 }}>
+              <div style={{ color: "#7A6353", fontSize: 12.5, marginTop: 3 }}>
                 {pkg.photoQuota} Photo Unlocks • {pkg.phoneQuota} Phone Unlocks
               </div>
             </div>
@@ -1653,7 +1668,7 @@ export default function MatrimonyApp() {
 
         {!myProfile && (
           <div style={styles.card}>
-            <p style={{ color: "#9FB0CE", fontSize: 14, margin: 0 }}>சுயவிவரம் காணப்படவில்லை.</p>
+            <p style={{ color: "#7A6353", fontSize: 14, margin: 0 }}>சுயவிவரம் காணப்படவில்லை.</p>
           </div>
         )}
 
@@ -1665,7 +1680,7 @@ export default function MatrimonyApp() {
               <div><div style={styles.infoLabel}>வயது</div><div style={styles.infoValue}>{age !== null ? age : "-"}</div></div>
               <div><div style={styles.infoLabel}>மாவட்டம்</div><div style={styles.infoValue}>{myProfile.district || "-"}</div></div>
             </div>
-            <button style={styles.btnGhost} onClick={startEditMyProfile}>எனது சுயவிவரத்தை திருத்த</button>
+            <button style={styles.btnPrimary} onClick={startEditMyProfile}>எனது சுயவிவரத்தை திருத்த (Edit Profile)</button>
           </div>
         )}
 
@@ -1683,14 +1698,14 @@ export default function MatrimonyApp() {
           <div style={styles.sectionTitle}>📥 எனக்கு வந்த விருப்பங்கள் ({myInterestsReceived.length})</div>
         </div>
         <div style={styles.card}>
-          {myInterestsReceived.length === 0 && <p style={{ color: "#9FB0CE", fontSize: 14, margin: 0 }}>இதுவரை யாரும் விருப்பம் தெரிவிக்கவில்லை.</p>}
+          {myInterestsReceived.length === 0 && <p style={{ color: "#7A6353", fontSize: 14, margin: 0 }}>இதுவரை யாரும் விருப்பம் தெரிவிக்கவில்லை.</p>}
           {myInterestsReceived.map((it) => {
             const from = approvedProfiles.find((p) => p.id === it.requesterProfileId);
             const age = from ? calcAge(from.dob) : null;
             return (
-              <div key={it.id} style={{ background: "#0B1220", border: "1px solid #1E2A44", borderRadius: 10, padding: "12px", marginBottom: 8 }}>
+              <div key={it.id} style={{ background: "#FBF5EA", border: "1px solid #EFDFC0", borderRadius: 10, padding: "12px", marginBottom: 8 }}>
                 <div style={{ fontWeight: 700, fontSize: 14 }}>{from ? `Profile #${from.memberId ?? "-"}` : "சுயவிவரம்"}</div>
-                <div style={{ color: "#7C8CAE", fontSize: 12.5, marginTop: 3 }}>
+                <div style={{ color: "#9C8874", fontSize: 12.5, marginTop: 3 }}>
                   {age !== null ? `${age} வயது` : ""}{from?.district ? ` • ${from.district}` : ""} • {fmtDate(it.createdAt)}
                 </div>
                 {it.status === "pending" && (
@@ -1699,8 +1714,8 @@ export default function MatrimonyApp() {
                     <button style={{ ...styles.btnGhost, width: "auto", padding: "9px 18px" }} onClick={() => respondToInterest(it.id, "rejected")}>நிராகரி</button>
                   </div>
                 )}
-                {it.status === "accepted" && <p style={{ color: "#8ADB9A", fontSize: 12.5, marginTop: 8 }}>✓ ஏற்றுக்கொண்டீர்கள்</p>}
-                {it.status === "rejected" && <p style={{ color: "#E4677E", fontSize: 12.5, marginTop: 8 }}>நிராகரித்தீர்கள்</p>}
+                {it.status === "accepted" && <p style={{ color: "#2F7D4F", fontSize: 12.5, marginTop: 8 }}>✓ ஏற்றுக்கொண்டீர்கள்</p>}
+                {it.status === "rejected" && <p style={{ color: "#B23A48", fontSize: 12.5, marginTop: 8 }}>நிராகரித்தீர்கள்</p>}
               </div>
             );
           })}
@@ -1710,13 +1725,13 @@ export default function MatrimonyApp() {
           <div style={styles.sectionTitle}>📤 நான் தெரிவித்த விருப்பங்கள் ({myInterestsSent.length})</div>
         </div>
         <div style={styles.card}>
-          {myInterestsSent.length === 0 && <p style={{ color: "#9FB0CE", fontSize: 14, margin: 0 }}>நீங்கள் இதுவரை யாருக்கும் விருப்பம் தெரிவிக்கவில்லை.</p>}
+          {myInterestsSent.length === 0 && <p style={{ color: "#7A6353", fontSize: 14, margin: 0 }}>நீங்கள் இதுவரை யாருக்கும் விருப்பம் தெரிவிக்கவில்லை.</p>}
           {myInterestsSent.map((it) => {
             const target = approvedProfiles.find((p) => p.id === it.profileId);
             return (
-              <div key={it.id} style={{ background: "#0B1220", border: "1px solid #1E2A44", borderRadius: 10, padding: "12px", marginBottom: 8 }}>
+              <div key={it.id} style={{ background: "#FBF5EA", border: "1px solid #EFDFC0", borderRadius: 10, padding: "12px", marginBottom: 8 }}>
                 <div style={{ fontWeight: 700, fontSize: 14 }}>{target ? `Profile #${target.memberId ?? "-"}` : "சுயவிவரம்"}</div>
-                <div style={{ color: "#7C8CAE", fontSize: 12.5, marginTop: 3 }}>{fmtDate(it.createdAt)} • {INTEREST_STATUS_LABELS[it.status] || it.status}</div>
+                <div style={{ color: "#9C8874", fontSize: 12.5, marginTop: 3 }}>{fmtDate(it.createdAt)} • {INTEREST_STATUS_LABELS[it.status] || it.status}</div>
               </div>
             );
           })}
@@ -1751,11 +1766,11 @@ export default function MatrimonyApp() {
       const displayName = priv.identity?.name || `Profile #${p.memberId ?? "-"}`;
       const displayPhone = priv.contact?.phone || "";
       return (
-        <div key={p.id} style={{ background: "#0B1220", border: "1px solid #1E2A44", borderRadius: 12, padding: "14px", marginBottom: 10 }}>
+        <div key={p.id} style={{ background: "#FBF5EA", border: "1px solid #EFDFC0", borderRadius: 12, padding: "14px", marginBottom: 10 }}>
           <div style={styles.row}>
             <div>
               <div style={{ fontWeight: 700, fontSize: 15 }}>{displayName} <span style={styles.badge}>{p.gender}</span>{p.memberId && <span style={styles.badge}> #{p.memberId}</span>}</div>
-              <div style={{ color: "#7C8CAE", fontSize: 12.5, marginTop: 3 }}>
+              <div style={{ color: "#9C8874", fontSize: 12.5, marginTop: 3 }}>
                 {age !== null ? `${age} வயது` : ""}{p.district ? ` • ${p.district}` : ""}{displayPhone ? ` • ${displayPhone}` : ""}
               </div>
             </div>
@@ -1769,7 +1784,7 @@ export default function MatrimonyApp() {
                 <button style={styles.btnGhost} onClick={() => setEditingProfileId(null)}>ரத்து</button>
               </div>
 
-              <div style={{ borderTop: "1px solid #1E2A44", paddingTop: 14 }}>
+              <div style={{ borderTop: "1px solid #EFDFC0", paddingTop: 14 }}>
                 <div style={styles.infoLabel}>Package நிலை</div>
                 <div style={styles.infoValue}>
                   {editDraftMember?.package
@@ -1777,7 +1792,7 @@ export default function MatrimonyApp() {
                     : "இல்லை"}
                 </div>
                 {editDraftMember?.package && (
-                  <div style={{ color: "#9FB0CE", fontSize: 12.5, marginBottom: 10 }}>
+                  <div style={{ color: "#7A6353", fontSize: 12.5, marginBottom: 10 }}>
                     Photo: {(editDraftMember.photoQuota || 0) - (editDraftMember.photoQuotaUsed || 0)}/{editDraftMember.photoQuota} • Phone: {(editDraftMember.phoneQuota || 0) - (editDraftMember.phoneQuotaUsed || 0)}/{editDraftMember.phoneQuota}
                   </div>
                 )}
@@ -1819,7 +1834,7 @@ export default function MatrimonyApp() {
 
         {adminTab === "pending" && (
           <div style={styles.card}>
-            {pendingProfiles.length === 0 && <p style={{ color: "#9FB0CE", fontSize: 14, margin: 0 }}>பரிசீலனையில் சுயவிவரங்கள் இல்லை.</p>}
+            {pendingProfiles.length === 0 && <p style={{ color: "#7A6353", fontSize: 14, margin: 0 }}>பரிசீலனையில் சுயவிவரங்கள் இல்லை.</p>}
             {pendingProfiles.map((p) =>
               renderProfileRow(p, [
                 <button key="a" style={styles.okBtn} onClick={() => approveProfile(p.id)}>ஏற்றுக்கொள்</button>,
@@ -1833,7 +1848,7 @@ export default function MatrimonyApp() {
 
         {adminTab === "approved" && (
           <div style={styles.card}>
-            {approvedAdminProfiles.length === 0 && <p style={{ color: "#9FB0CE", fontSize: 14, margin: 0 }}>ஏற்கப்பட்ட சுயவிவரங்கள் இல்லை.</p>}
+            {approvedAdminProfiles.length === 0 && <p style={{ color: "#7A6353", fontSize: 14, margin: 0 }}>ஏற்கப்பட்ட சுயவிவரங்கள் இல்லை.</p>}
             {approvedAdminProfiles.map((p) =>
               renderProfileRow(p, [
                 <button key="e" style={styles.linkBtn} onClick={() => startEditProfile(p)}>திருத்து</button>,
@@ -1846,7 +1861,7 @@ export default function MatrimonyApp() {
 
         {adminTab === "rejected" && (
           <div style={styles.card}>
-            {rejectedProfiles.length === 0 && <p style={{ color: "#9FB0CE", fontSize: 14, margin: 0 }}>நிராகரிக்கப்பட்ட சுயவிவரங்கள் இல்லை.</p>}
+            {rejectedProfiles.length === 0 && <p style={{ color: "#7A6353", fontSize: 14, margin: 0 }}>நிராகரிக்கப்பட்ட சுயவிவரங்கள் இல்லை.</p>}
             {rejectedProfiles.map((p) =>
               renderProfileRow(p, [
                 <button key="o" style={styles.okBtn} onClick={() => reconsiderProfile(p.id)}>மீண்டும் பரிசீலி</button>,
@@ -1858,7 +1873,7 @@ export default function MatrimonyApp() {
 
         {adminTab === "interests" && (
           <div style={styles.card}>
-            {interests.length === 0 && <p style={{ color: "#9FB0CE", fontSize: 14, margin: 0 }}>ஆர்வம் தெரிவித்தவர்கள் இல்லை.</p>}
+            {interests.length === 0 && <p style={{ color: "#7A6353", fontSize: 14, margin: 0 }}>ஆர்வம் தெரிவித்தவர்கள் இல்லை.</p>}
             {interests.map((it) => {
               const target = allProfiles.find((p) => p.id === it.profileId);
               const targetPhone = target ? allPrivate[target.id]?.contact?.phone : null;
@@ -1866,17 +1881,17 @@ export default function MatrimonyApp() {
               const fromName = from ? allPrivate[from.id]?.identity?.name : null;
               const fromPhone = from ? allPrivate[from.id]?.contact?.phone : null;
               return (
-                <div key={it.id} style={{ background: "#0B1220", border: "1px solid #1E2A44", borderRadius: 12, padding: "14px", marginBottom: 10 }}>
+                <div key={it.id} style={{ background: "#FBF5EA", border: "1px solid #EFDFC0", borderRadius: 12, padding: "14px", marginBottom: 10 }}>
                   <div style={styles.row}>
                     <div>
                       <div style={{ fontWeight: 700, fontSize: 14.5 }}>
                         {fromName || (from ? `Profile #${from.memberId ?? "-"}` : "(நீக்கப்பட்ட சுயவிவரம்)")}
-                        <span style={{ color: "#7C8CAE", fontWeight: 400, fontSize: 12.5 }}> → {target ? `Profile #${target.memberId ?? "-"}` : "(நீக்கப்பட்ட சுயவிவரம்)"}</span>
+                        <span style={{ color: "#9C8874", fontWeight: 400, fontSize: 12.5 }}> → {target ? `Profile #${target.memberId ?? "-"}` : "(நீக்கப்பட்ட சுயவிவரம்)"}</span>
                       </div>
-                      <div style={{ color: "#7C8CAE", fontSize: 12.5, marginTop: 3 }}>
+                      <div style={{ color: "#9C8874", fontSize: 12.5, marginTop: 3 }}>
                         {fromPhone ? `அனுப்பியவர்: ${fromPhone}` : ""}{targetPhone ? ` • பெறுபவர்: ${targetPhone}` : ""} • {fmtDate(it.createdAt)}
                       </div>
-                      <div style={{ color: "#F2A93B", fontSize: 12, marginTop: 3 }}>நிலை: {INTEREST_STATUS_LABELS[it.status] || it.status || "-"}</div>
+                      <div style={{ color: "#A9720F", fontSize: 12, marginTop: 3 }}>நிலை: {INTEREST_STATUS_LABELS[it.status] || it.status || "-"}</div>
                     </div>
                     <button style={styles.dangerBtn} onClick={() => deleteInterest(it.id)}>நீக்கு</button>
                   </div>
@@ -1900,7 +1915,7 @@ export default function MatrimonyApp() {
 
             <div style={styles.section}>
               <div style={styles.sectionTitle}>Package அமைப்புகள்</div>
-              <p style={{ color: "#9FB0CE", fontSize: 12.5, margin: "-8px 0 4px" }}>
+              <p style={{ color: "#7A6353", fontSize: 12.5, margin: "-8px 0 4px" }}>
                 ஒவ்வொரு package-ன் விலை, காலம், Photo/Phone unlock எண்ணிக்கையை இங்கே எப்போது வேண்டுமானாலும் மாற்றலாம். ஏற்கனவே package வாங்கிய உறுப்பினர்களை இது பாதிக்காது — புதிதாக assign செய்யும்போது மட்டும் இந்த புது எண்ணிக்கை பயன்படும்.
               </p>
             </div>
@@ -1917,7 +1932,7 @@ export default function MatrimonyApp() {
                   />
                   <div style={{ display: "flex", gap: 10 }}>
                     <div style={{ flex: 1 }}>
-                      <label style={styles.label}>விலை (₹)</label>
+                      <label style={styles.label}>விலை (Rs.)</label>
                       <input
                         style={{ ...styles.input, marginBottom: 0 }}
                         type="number"
