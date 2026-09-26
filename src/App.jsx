@@ -506,6 +506,7 @@ export default function MatrimonyApp() {
   const [packageDrafts, setPackageDrafts] = useState({});
   const [approvedProfiles, setApprovedProfiles] = useState([]);
   const [selectedProfileId, setSelectedProfileId] = useState(null);
+  const [profileReturnTo, setProfileReturnTo] = useState("browse");
   const [zoomedPhoto, setZoomedPhoto] = useState(null);
 
   // register form
@@ -1340,7 +1341,7 @@ export default function MatrimonyApp() {
           const age = calcAge(p.dob);
           const unlocked = (myMember?.unlockedPhotoIds || []).includes(p.id) || p.ownerUid === authUser?.uid;
           return (
-            <button key={p.id} style={styles.profileCard} onClick={() => { setSelectedProfileId(p.id); setScreen("profile"); }}>
+            <button key={p.id} style={styles.profileCard} onClick={() => { setSelectedProfileId(p.id); setProfileReturnTo("browse"); setScreen("profile"); }}>
               <div style={styles.avatar}>{unlocked ? (p.gender === "பெண்" ? "👰" : "🤵") : "🔒"}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontFamily: "'Fraunces',serif", fontWeight: 700, fontSize: 16, color: "#6B1A38" }}>Profile #{p.memberId ?? "-"}</div>
@@ -1370,7 +1371,7 @@ export default function MatrimonyApp() {
     return (
       <div style={styles.page}>
         <Header siteName={settings.siteName} onAdminClick={goAdmin} />
-        <Back to="browse" label="பின்செல்" onGo={goTo} />
+        <Back to={profileReturnTo} label="பின்செல்" onGo={goTo} />
         <div style={styles.section}>
           <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
             <div
@@ -1704,10 +1705,22 @@ export default function MatrimonyApp() {
             const age = from ? calcAge(from.dob) : null;
             return (
               <div key={it.id} style={{ background: "#FBF5EA", border: "1px solid #EFDFC0", borderRadius: 10, padding: "12px", marginBottom: 8 }}>
-                <div style={{ fontWeight: 700, fontSize: 14 }}>{from ? `Profile #${from.memberId ?? "-"}` : "சுயவிவரம்"}</div>
-                <div style={{ color: "#9C8874", fontSize: 12.5, marginTop: 3 }}>
-                  {age !== null ? `${age} வயது` : ""}{from?.district ? ` • ${from.district}` : ""} • {fmtDate(it.createdAt)}
-                </div>
+                {from ? (
+                  <button
+                    style={{ background: "none", border: "none", padding: 0, textAlign: "left", cursor: "pointer", width: "100%" }}
+                    onClick={() => { setSelectedProfileId(from.id); setProfileReturnTo("memberDashboard"); setScreen("profile"); }}
+                  >
+                    <div style={{ fontWeight: 700, fontSize: 14, color: "#7A1F3D", textDecoration: "underline" }}>Profile #{from.memberId ?? "-"} சுயவிவரத்தை பார்க்க →</div>
+                    <div style={{ color: "#9C8874", fontSize: 12.5, marginTop: 3 }}>
+                      {age !== null ? `${age} வயது` : ""}{from?.district ? ` • ${from.district}` : ""} • {fmtDate(it.createdAt)}
+                    </div>
+                  </button>
+                ) : (
+                  <>
+                    <div style={{ fontWeight: 700, fontSize: 14 }}>சுயவிவரம்</div>
+                    <div style={{ color: "#9C8874", fontSize: 12.5, marginTop: 3 }}>{fmtDate(it.createdAt)}</div>
+                  </>
+                )}
                 {it.status === "pending" && (
                   <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
                     <button style={{ ...styles.btnPrimary, width: "auto", padding: "9px 18px" }} onClick={() => respondToInterest(it.id, "accepted")}>ஏற்றுக்கொள்</button>
