@@ -185,6 +185,7 @@ const waLink = (phone, text) => {
 };
 
 const STATUS_LABELS = { pending: "பரிசீலனையில்", approved: "ஏற்றுக்கொள்ளப்பட்டது", rejected: "நிராகரிக்கப்பட்டது" };
+const INTEREST_STATUS_LABELS = { pending: "பதிலுக்கு காத்திருக்கிறது", accepted: "ஏற்றுக்கொள்ளப்பட்டது", rejected: "நிராகரிக்கப்பட்டது" };
 
 const assignMemberId = async () => {
   const counterRef = doc(db, "counters", "memberId");
@@ -291,6 +292,49 @@ function WhatsAppIcon() {
       <path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.25-.46-2.38-1.47-.88-.78-1.47-1.75-1.65-2.05-.17-.3-.02-.46.13-.61.14-.14.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51-.17-.01-.37-.01-.57-.01s-.52.07-.8.37c-.27.3-1.04 1.02-1.04 2.5s1.07 2.9 1.22 3.1c.15.2 2.1 3.21 5.1 4.5.71.31 1.27.49 1.7.62.72.23 1.37.2 1.89.12.58-.09 1.76-.72 2-1.41.25-.7.25-1.29.17-1.41-.07-.12-.27-.2-.57-.35z" />
       <path d="M12.02 2C6.5 2 2 6.48 2 12c0 1.85.5 3.58 1.36 5.08L2 22l5.06-1.33A9.96 9.96 0 0 0 12.02 22C17.53 22 22 17.52 22 12S17.53 2 12.02 2zm0 18.2c-1.62 0-3.13-.44-4.43-1.21l-.32-.19-3 .79.8-2.92-.21-.3A8.17 8.17 0 0 1 3.8 12c0-4.53 3.7-8.2 8.22-8.2 4.52 0 8.2 3.67 8.2 8.2 0 4.53-3.68 8.2-8.2 8.2z" />
     </svg>
+  );
+}
+
+// A message thread under an interest request. Every message is subject to
+// admin approval before the other party can see it, so what's passed in
+// `messages` already reflects what the current viewer is allowed to see
+// (their own messages at any status, the other side's only once approved) —
+// this component just renders them and, for the admin, exposes the
+// approve/reject actions on whatever's still pending.
+function InterestThread({ messages, viewerUid, isAdmin, onApproveMessage, onRejectMessage }) {
+  if (!messages || messages.length === 0) return null;
+  return (
+    <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+      {messages.map((m) => {
+        const mine = viewerUid && m.senderUid === viewerUid;
+        return (
+          <div
+            key={m.id}
+            style={{
+              alignSelf: mine ? "flex-end" : "flex-start",
+              maxWidth: "85%",
+              background: mine ? "#3A1030" : "#0B1220",
+              border: "1px solid #263354",
+              borderRadius: 10,
+              padding: "8px 12px",
+            }}
+          >
+            <div style={{ color: "#EAF0FA", fontSize: 13.5, whiteSpace: "pre-wrap" }}>{m.text}</div>
+            <div style={{ color: "#7C8CAE", fontSize: 11, marginTop: 4 }}>
+              {fmtDate(m.createdAt)}
+              {m.status === "pending" && <span style={{ color: "#F2A93B" }}> • பரிசீலனையில்</span>}
+              {m.status === "rejected" && <span style={{ color: "#E4677E" }}> • நிராகரிக்கப்பட்டது</span>}
+            </div>
+            {isAdmin && m.status === "pending" && (
+              <div style={{ display: "flex", gap: 12, marginTop: 6 }}>
+                <button style={styles.okBtn} onClick={() => onApproveMessage(m.id)}>அனுமதி</button>
+                <button style={styles.dangerBtn} onClick={() => onRejectMessage(m.id)}>நிராகரி</button>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
@@ -541,6 +585,8 @@ export default function MatrimonyApp() {
   const [allProfiles, setAllProfiles] = useState([]);
   const [allPrivate, setAllPrivate] = useState({}); // profileId -> { identity, contact }
   const [interests, setInterests] = useState([]);
+  const [messagesByInterest, setMessagesByInterest] = useState({});
+  const [replyDrafts, setReplyDrafts] = useState({});
   const [adminTab, setAdminTab] = useState("pending"); // pending | approved | rejected | interests | settings
   const [editingProfileId, setEditingProfileId] = useState(null);
   const [editDraft, setEditDraft] = useState(EMPTY_PROFILE);
@@ -656,10 +702,23 @@ export default function MatrimonyApp() {
     const unsubInterests = onSnapshot(collection(db, INTERESTS_COLLECTION), (snap) => {
       setInterests(sortByCreatedDesc(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
     });
+    // Every interest's message thread in one query, grouped back by which
+    // interest each message belongs to, so the admin can review/approve
+    // every pending message without opening each interest individually.
+    const unsubMessages = onSnapshot(collectionGroup(db, "messages"), (snap) => {
+      const byInterest = {};
+      snap.docs.forEach((d) => {
+        const interestId = d.ref.parent.parent.id;
+        (byInterest[interestId] = byInterest[interestId] || []).push({ id: d.id, ...d.data() });
+      });
+      Object.values(byInterest).forEach((list) => list.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0)));
+      setMessagesByInterest(byInterest);
+    });
     return () => {
       unsubAll();
       unsubPrivate();
       unsubInterests();
+      unsubMessages();
     };
   }, [authUser, isAdminUser]);
 
@@ -696,6 +755,25 @@ export default function MatrimonyApp() {
       unsubReceived();
     };
   }, [authUser, isAdminUser]);
+
+  // A member only cares about the message threads under interests they're
+  // actually a party to (sent or received), so this listens per-interest
+  // instead of the admin's single collectionGroup query across everyone's.
+  const myInterestIdsKey = [...myInterestsSent, ...myInterestsReceived].map((it) => it.id).sort().join(",");
+  useEffect(() => {
+    if (!authUser || isAdminUser || !db || !myInterestIdsKey) {
+      setMessagesByInterest({});
+      return;
+    }
+    const ids = myInterestIdsKey.split(",");
+    const unsubs = ids.map((id) =>
+      onSnapshot(collection(db, INTERESTS_COLLECTION, id, "messages"), (snap) => {
+        const list = snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+        setMessagesByInterest((prev) => ({ ...prev, [id]: list }));
+      })
+    );
+    return () => unsubs.forEach((u) => u());
+  }, [authUser, isAdminUser, myInterestIdsKey]);
 
   useEffect(() => {
     if (!myProfile || isAdminUser) {
@@ -841,27 +919,75 @@ export default function MatrimonyApp() {
   };
 
   // ---------- public: express interest ----------
+  // Every message (the first one included) needs an admin to approve it
+  // before the other party can see it — this just writes the message doc;
+  // Firestore rules enforce that only the sender/recipient of the parent
+  // interest may add to its thread, and only an admin can flip its status.
+  const sendInterestMessage = (interestId, senderUid, text) =>
+    addDoc(collection(db, INTERESTS_COLLECTION, interestId, "messages"), {
+      senderUid,
+      text: text.trim(),
+      status: "pending",
+      createdAt: serverTimestamp(),
+    });
+
   const handleInterestSubmit = async () => {
     if (!interestForm.requesterName.trim() || !interestForm.requesterPhone.trim()) {
       return setError("உங்கள் பெயர் மற்றும் தொடர்பு எண்ணை நிரப்பவும்.");
     }
+    if (!interestForm.message.trim()) {
+      return setError("செய்தியை எழுதவும்.");
+    }
     setError("");
     setInterestBusy(true);
     try {
-      await addDoc(collection(db, INTERESTS_COLLECTION), {
+      const requesterUid = authUser && !isAdminUser ? authUser.uid : null;
+      const interestRef = await addDoc(collection(db, INTERESTS_COLLECTION), {
         profileId: selectedProfileId,
         recipientUid: selectedProfile?.ownerUid || null,
-        requesterUid: authUser && !isAdminUser ? authUser.uid : null,
+        requesterUid,
         requesterName: interestForm.requesterName.trim(),
         requesterPhone: interestForm.requesterPhone.trim(),
-        message: interestForm.message.trim(),
+        status: "pending",
         createdAt: serverTimestamp(),
       });
+      if (requesterUid) {
+        await sendInterestMessage(interestRef.id, requesterUid, interestForm.message);
+      }
       setInterestDone(true);
     } catch (e) {
       setError("அனுப்ப முடியவில்லை. மீண்டும் முயற்சிக்கவும்.");
     } finally {
       setInterestBusy(false);
+    }
+  };
+
+  // ---------- member: respond to / continue an interest thread ----------
+  const respondToInterest = async (interestId, status) => {
+    try {
+      await updateDoc(doc(db, INTERESTS_COLLECTION, interestId), { status });
+    } catch (e) {
+      setError("செயல்படுத்த முடியவில்லை.");
+    }
+  };
+
+  const handleSendReply = async (interestId) => {
+    const text = (replyDrafts[interestId] || "").trim();
+    if (!text || !authUser) return;
+    try {
+      await sendInterestMessage(interestId, authUser.uid, text);
+      setReplyDrafts((prev) => ({ ...prev, [interestId]: "" }));
+    } catch (e) {
+      setError("அனுப்ப முடியவில்லை.");
+    }
+  };
+
+  // ---------- admin: approve/reject an individual message ----------
+  const setMessageStatus = async (interestId, messageId, status) => {
+    try {
+      await updateDoc(doc(db, INTERESTS_COLLECTION, interestId, "messages", messageId), { status });
+    } catch (e) {
+      setError("செயல்படுத்த முடியவில்லை.");
     }
   };
 
@@ -1442,17 +1568,17 @@ export default function MatrimonyApp() {
         <div style={styles.card}>
           <div style={styles.eyebrow}>விருப்பம் தெரிவிக்க (இலவசம்)</div>
           <p style={{ color: "#9FB0CE", fontSize: 13.5, lineHeight: 1.6, marginTop: 0 }}>
-            Credits இல்லாமலேயே ஒரு விருப்ப செய்தி அனுப்பலாம் — நிர்வாகி இரு தரப்பையும் இணைப்பார்.
+            Credits இல்லாமலேயே ஒரு செய்தி அனுப்பலாம். இது நிர்வாகி பரிசீலித்து அனுமதித்த பின்னரே மறுதலைப்பினருக்கு செல்லும்.
           </p>
           {interestDone ? (
-            <div style={styles.flash}>உங்கள் விருப்பம் பதிவு செய்யப்பட்டது. நிர்வாகி விரைவில் தொடர்பு கொள்வார்.</div>
+            <div style={styles.flash}>உங்கள் செய்தி அனுப்பப்பட்டது. நிர்வாகி பரிசீலித்த பின் மறுதலைப்பினருக்கு செல்லும் — நிலையை "எனது Dashboard"-ல் பார்க்கலாம்.</div>
           ) : (
             <>
               <label style={styles.label}>உங்கள் பெயர் *</label>
               <input style={styles.input} value={interestForm.requesterName} onChange={(e) => setInterestForm({ ...interestForm, requesterName: e.target.value })} />
               <label style={styles.label}>உங்கள் தொடர்பு எண் *</label>
               <input style={styles.input} value={interestForm.requesterPhone} onChange={(e) => setInterestForm({ ...interestForm, requesterPhone: e.target.value })} />
-              <label style={styles.label}>செய்தி (விருப்பம்)</label>
+              <label style={styles.label}>செய்தி *</label>
               <textarea style={styles.textarea} value={interestForm.message} onChange={(e) => setInterestForm({ ...interestForm, message: e.target.value })} />
               <button style={styles.btnPrimary} onClick={handleInterestSubmit} disabled={interestBusy}>
                 {interestBusy ? "அனுப்புகிறது…" : "விருப்பம் தெரிவிக்க"}
@@ -1682,19 +1808,42 @@ export default function MatrimonyApp() {
           </div>
         )}
 
-        <div style={styles.section}>
-          <div style={styles.sectionTitle}>📥 எனக்கு வந்த விருப்பங்கள் ({myInterestsReceived.length})</div>
-        </div>
-        <div style={styles.card}>
-          {myInterestsReceived.length === 0 && <p style={{ color: "#9FB0CE", fontSize: 14, margin: 0 }}>இதுவரை யாரும் விருப்பம் தெரிவிக்கவில்லை.</p>}
-          {myInterestsReceived.map((it) => (
-            <div key={it.id} style={{ background: "#0B1220", border: "1px solid #1E2A44", borderRadius: 10, padding: "12px", marginBottom: 8 }}>
-              <div style={{ fontWeight: 700, fontSize: 14 }}>{it.requesterName}</div>
-              <div style={{ color: "#7C8CAE", fontSize: 12.5, marginTop: 3 }}>{it.requesterPhone} • {fmtDate(it.createdAt)}</div>
-              {it.message && <div style={{ color: "#9FB0CE", fontSize: 13, marginTop: 6 }}>{it.message}</div>}
-            </div>
-          ))}
-        </div>
+        {(() => {
+          const visibleReceived = myInterestsReceived.filter((it) => (messagesByInterest[it.id] || []).length > 0);
+          return (
+            <>
+              <div style={styles.section}>
+                <div style={styles.sectionTitle}>📥 எனக்கு வந்த விருப்பங்கள் ({visibleReceived.length})</div>
+              </div>
+              <div style={styles.card}>
+                {visibleReceived.length === 0 && <p style={{ color: "#9FB0CE", fontSize: 14, margin: 0 }}>இதுவரை நிர்வாகி அனுமதித்த விருப்பங்கள் இல்லை.</p>}
+                {visibleReceived.map((it) => {
+                  const msgs = messagesByInterest[it.id] || [];
+                  return (
+                    <div key={it.id} style={{ background: "#0B1220", border: "1px solid #1E2A44", borderRadius: 10, padding: "12px", marginBottom: 10 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14 }}>{it.requesterName}</div>
+                      <div style={{ color: "#7C8CAE", fontSize: 12.5, marginTop: 3 }}>{it.requesterPhone} • {fmtDate(it.createdAt)}</div>
+                      <InterestThread messages={msgs} viewerUid={authUser.uid} isAdmin={false} />
+                      {it.status === "pending" && (
+                        <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+                          <button style={{ ...styles.btnPrimary, width: "auto", padding: "9px 18px" }} onClick={() => respondToInterest(it.id, "accepted")}>ஏற்றுக்கொள்</button>
+                          <button style={{ ...styles.btnGhost, width: "auto", padding: "9px 18px" }} onClick={() => respondToInterest(it.id, "rejected")}>நிராகரி</button>
+                        </div>
+                      )}
+                      {it.status === "accepted" && (
+                        <div style={{ marginTop: 10 }}>
+                          <textarea style={{ ...styles.textarea, marginBottom: 8 }} value={replyDrafts[it.id] || ""} onChange={(e) => setReplyDrafts({ ...replyDrafts, [it.id]: e.target.value })} placeholder="பதில் எழுதவும்..." />
+                          <button style={{ ...styles.btnGhost, width: "auto", padding: "9px 18px" }} onClick={() => handleSendReply(it.id)}>பதில் அனுப்ப</button>
+                        </div>
+                      )}
+                      {it.status === "rejected" && <p style={{ color: "#E4677E", fontSize: 12.5, marginTop: 8 }}>நீங்கள் இதை நிராகரித்தீர்கள்.</p>}
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          );
+        })()}
 
         <div style={styles.section}>
           <div style={styles.sectionTitle}>📤 நான் தெரிவித்த விருப்பங்கள் ({myInterestsSent.length})</div>
@@ -1703,10 +1852,18 @@ export default function MatrimonyApp() {
           {myInterestsSent.length === 0 && <p style={{ color: "#9FB0CE", fontSize: 14, margin: 0 }}>நீங்கள் இதுவரை யாருக்கும் விருப்பம் தெரிவிக்கவில்லை.</p>}
           {myInterestsSent.map((it) => {
             const target = approvedProfiles.find((p) => p.id === it.profileId);
+            const msgs = messagesByInterest[it.id] || [];
             return (
-              <div key={it.id} style={{ background: "#0B1220", border: "1px solid #1E2A44", borderRadius: 10, padding: "12px", marginBottom: 8 }}>
+              <div key={it.id} style={{ background: "#0B1220", border: "1px solid #1E2A44", borderRadius: 10, padding: "12px", marginBottom: 10 }}>
                 <div style={{ fontWeight: 700, fontSize: 14 }}>{target ? `Profile #${target.memberId ?? "-"}` : "சுயவிவரம்"}</div>
-                <div style={{ color: "#7C8CAE", fontSize: 12.5, marginTop: 3 }}>{fmtDate(it.createdAt)}</div>
+                <div style={{ color: "#7C8CAE", fontSize: 12.5, marginTop: 3 }}>{fmtDate(it.createdAt)} • {INTEREST_STATUS_LABELS[it.status] || it.status}</div>
+                <InterestThread messages={msgs} viewerUid={authUser.uid} isAdmin={false} />
+                {it.status === "accepted" && (
+                  <div style={{ marginTop: 10 }}>
+                    <textarea style={{ ...styles.textarea, marginBottom: 8 }} value={replyDrafts[it.id] || ""} onChange={(e) => setReplyDrafts({ ...replyDrafts, [it.id]: e.target.value })} placeholder="பதில் எழுதவும்..." />
+                    <button style={{ ...styles.btnGhost, width: "auto", padding: "9px 18px" }} onClick={() => handleSendReply(it.id)}>பதில் அனுப்ப</button>
+                  </div>
+                )}
               </div>
             );
           })}
@@ -1852,6 +2009,8 @@ export default function MatrimonyApp() {
             {interests.map((it) => {
               const target = allProfiles.find((p) => p.id === it.profileId);
               const targetPhone = target ? allPrivate[target.id]?.contact?.phone : null;
+              const msgs = messagesByInterest[it.id] || [];
+              const pendingCount = msgs.filter((m) => m.status === "pending").length;
               return (
                 <div key={it.id} style={{ background: "#0B1220", border: "1px solid #1E2A44", borderRadius: 12, padding: "14px", marginBottom: 10 }}>
                   <div style={styles.row}>
@@ -1860,10 +2019,19 @@ export default function MatrimonyApp() {
                       <div style={{ color: "#7C8CAE", fontSize: 12.5, marginTop: 3 }}>
                         {it.requesterPhone}{targetPhone ? ` • சுயவிவர எண்: ${targetPhone}` : ""} • {fmtDate(it.createdAt)}
                       </div>
-                      {it.message && <div style={{ color: "#9FB0CE", fontSize: 13, marginTop: 6 }}>{it.message}</div>}
+                      <div style={{ color: "#F2A93B", fontSize: 12, marginTop: 3 }}>
+                        நிலை: {INTEREST_STATUS_LABELS[it.status] || it.status || "-"}{pendingCount > 0 ? ` • ${pendingCount} செய்தி பரிசீலனையில்` : ""}
+                      </div>
                     </div>
                     <button style={styles.dangerBtn} onClick={() => deleteInterest(it.id)}>நீக்கு</button>
                   </div>
+                  <InterestThread
+                    messages={msgs}
+                    viewerUid={null}
+                    isAdmin
+                    onApproveMessage={(messageId) => setMessageStatus(it.id, messageId, "approved")}
+                    onRejectMessage={(messageId) => setMessageStatus(it.id, messageId, "rejected")}
+                  />
                 </div>
               );
             })}

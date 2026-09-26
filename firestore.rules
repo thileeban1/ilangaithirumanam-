@@ -111,18 +111,56 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Lets an admin list every interest's message thread in one
+    // collectionGroup query, to review and approve/reject messages without
+    // opening each interest individually.
+    match /{path=**}/messages/{messageId} {
+      allow read: if isAdmin();
+    }
+
     match /interests/{interestId} {
       allow create: if request.resource.data.profileId is string
                     && request.resource.data.requesterName is string
                     && request.resource.data.requesterName.size() > 0
                     && request.resource.data.requesterPhone is string
-                    && request.resource.data.requesterPhone.size() > 0;
+                    && request.resource.data.requesterPhone.size() > 0
+                    && request.resource.data.status == 'pending';
       // Visible to: the admin, whoever sent the request (if logged in when
       // they sent it), and the profile owner it was sent to — nobody else.
       allow read: if isAdmin()
                   || (request.auth != null && resource.data.requesterUid == request.auth.uid)
                   || (request.auth != null && resource.data.recipientUid == request.auth.uid);
-      allow update, delete: if isAdmin();
+      // The recipient may only accept/reject the request itself — nothing
+      // else about it — and can't touch it a second time once decided.
+      // Admin can change/delete anything.
+      allow update: if isAdmin()
+                    || (request.auth != null && resource.data.recipientUid == request.auth.uid
+                        && resource.data.status == 'pending'
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+                        && request.resource.data.status in ['accepted', 'rejected']);
+      allow delete: if isAdmin();
+
+      // Every message — the first one included — must be approved by an
+      // admin before the other side can see it; each side always sees
+      // their own messages so they can track pending/rejected status.
+      match /messages/{messageId} {
+        allow create: if request.auth != null
+                      && request.resource.data.senderUid == request.auth.uid
+                      && request.resource.data.status == 'pending'
+                      && request.resource.data.text is string
+                      && request.resource.data.text.size() > 0
+                      && (get(/databases/$(database)/documents/interests/$(interestId)).data.requesterUid == request.auth.uid
+                          || get(/databases/$(database)/documents/interests/$(interestId)).data.recipientUid == request.auth.uid);
+        allow read: if isAdmin()
+                    || (request.auth != null
+                        && (resource.data.senderUid == request.auth.uid || resource.data.status == 'approved')
+                        && (get(/databases/$(database)/documents/interests/$(interestId)).data.requesterUid == request.auth.uid
+                            || get(/databases/$(database)/documents/interests/$(interestId)).data.recipientUid == request.auth.uid));
+        // Only an admin flips a message from pending to approved/rejected;
+        // neither party can self-approve or edit message content.
+        allow update: if isAdmin();
+        allow delete: if isAdmin();
+      }
     }
 
     match /{document=**} {
