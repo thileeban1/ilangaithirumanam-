@@ -130,8 +130,6 @@ const EMPTY_PROFILE = {
 // single-photo field (photoUrl) or the current multi-photo array (photoUrls).
 const allPhotosOf = (p) => (p?.photoUrls && p.photoUrls.length > 0 ? p.photoUrls : p?.photoUrl ? [p.photoUrl] : []);
 
-const EMPTY_INTEREST = { requesterName: "", requesterPhone: "" };
-
 const DEFAULT_SETTINGS = {
   siteName: "இலங்கை தமிழர் திருமண மையம்",
   tagline: "நம்பிக்கையுடன் ஒரு புதிய தொடக்கம்",
@@ -525,8 +523,7 @@ export default function MatrimonyApp() {
   const [viewedIdentity, setViewedIdentity] = useState(null);
   const [viewedContact, setViewedContact] = useState(null);
 
-  // interest form (on profile detail)
-  const [interestForm, setInterestForm] = useState(EMPTY_INTEREST);
+  // express-interest button (on profile detail)
   const [interestBusy, setInterestBusy] = useState(false);
   const [interestDone, setInterestDone] = useState(false);
 
@@ -717,11 +714,6 @@ export default function MatrimonyApp() {
   }, [myProfile?.id, isAdminUser]);
 
   useEffect(() => {
-    if (authUser && !isAdminUser && myIdentity && myContact) {
-      setInterestForm({ requesterName: myIdentity.name || "", requesterPhone: myContact.phone || "" });
-    } else {
-      setInterestForm(EMPTY_INTEREST);
-    }
     setInterestDone(false);
   }, [selectedProfileId]);
 
@@ -842,19 +834,20 @@ export default function MatrimonyApp() {
   };
 
   // ---------- public: express interest ----------
+  // A plain mutual interest signal, like a connection request -- it never
+  // reveals a phone number or a photo. Those stay behind the separate
+  // package/unlock system; this is only "do I want to be matched with this
+  // person, yes or no."
   const handleInterestSubmit = async () => {
-    if (!interestForm.requesterName.trim() || !interestForm.requesterPhone.trim()) {
-      return setError("உங்கள் பெயர் மற்றும் தொடர்பு எண்ணை நிரப்பவும்.");
-    }
+    if (!authUser || !myProfile) return;
     setError("");
     setInterestBusy(true);
     try {
       await addDoc(collection(db, INTERESTS_COLLECTION), {
         profileId: selectedProfileId,
         recipientUid: selectedProfile?.ownerUid || null,
-        requesterUid: authUser && !isAdminUser ? authUser.uid : null,
-        requesterName: interestForm.requesterName.trim(),
-        requesterPhone: interestForm.requesterPhone.trim(),
+        requesterUid: authUser.uid,
+        requesterProfileId: myProfile.id,
         status: "pending",
         createdAt: serverTimestamp(),
       });
@@ -1449,25 +1442,21 @@ export default function MatrimonyApp() {
           )}
         </div>
 
-        <div style={styles.card}>
-          <div style={styles.eyebrow}>விருப்பம் தெரிவிக்க (இலவசம்)</div>
-          <p style={{ color: "#9FB0CE", fontSize: 13.5, lineHeight: 1.6, marginTop: 0 }}>
-            Credits இல்லாமலேயே இந்த சுயவிவரத்திற்கு விருப்பம் தெரிவிக்கலாம் — அவர்கள் ஏற்றுக்கொண்டால் உங்கள் பெயர் + தொடர்பு எண் அவர்களுக்குத் தெரியும்.
-          </p>
-          {interestDone ? (
-            <div style={styles.flash}>உங்கள் விருப்பம் அனுப்பப்பட்டது. அவர்களின் பதிலை "எனது Dashboard"-ல் பார்க்கலாம்.</div>
-          ) : (
-            <>
-              <label style={styles.label}>உங்கள் பெயர் *</label>
-              <input style={styles.input} value={interestForm.requesterName} onChange={(e) => setInterestForm({ ...interestForm, requesterName: e.target.value })} />
-              <label style={styles.label}>உங்கள் தொடர்பு எண் *</label>
-              <input style={styles.input} value={interestForm.requesterPhone} onChange={(e) => setInterestForm({ ...interestForm, requesterPhone: e.target.value })} />
-              <button style={styles.btnPrimary} onClick={handleInterestSubmit} disabled={interestBusy}>
-                {interestBusy ? "அனுப்புகிறது…" : "விருப்பம் தெரிவிக்க"}
+        {!isOwnProfile && (
+          <div style={styles.card}>
+            <div style={styles.eyebrow}>விருப்பம்</div>
+            <p style={{ color: "#9FB0CE", fontSize: 13.5, lineHeight: 1.6, marginTop: 0 }}>
+              இந்த சுயவிவரத்தில் உங்களுக்கு விருப்பம் இருந்தால் தெரிவிக்கவும். இது வெறும் ஒரு "விருப்பம்" குறிப்பு மட்டும் — உங்கள் தொடர்பு எண் அல்லது புகைப்படம் இதனால் யாருக்கும் தெரியாது.
+            </p>
+            {interestDone ? (
+              <div style={styles.flash}>உங்கள் விருப்பம் தெரிவிக்கப்பட்டது. அவர்களின் பதிலை "எனது Dashboard"-ல் பார்க்கலாம்.</div>
+            ) : (
+              <button style={styles.btnPrimary} onClick={handleInterestSubmit} disabled={interestBusy || !myProfile}>
+                {interestBusy ? "அனுப்புகிறது…" : "💗 விருப்பம் தெரிவிக்க"}
               </button>
-            </>
-          )}
-        </div>
+            )}
+          </div>
+        )}
 
         {zoomedPhoto && (
           <div
@@ -1695,20 +1684,26 @@ export default function MatrimonyApp() {
         </div>
         <div style={styles.card}>
           {myInterestsReceived.length === 0 && <p style={{ color: "#9FB0CE", fontSize: 14, margin: 0 }}>இதுவரை யாரும் விருப்பம் தெரிவிக்கவில்லை.</p>}
-          {myInterestsReceived.map((it) => (
-            <div key={it.id} style={{ background: "#0B1220", border: "1px solid #1E2A44", borderRadius: 10, padding: "12px", marginBottom: 8 }}>
-              <div style={{ fontWeight: 700, fontSize: 14 }}>{it.requesterName}</div>
-              <div style={{ color: "#7C8CAE", fontSize: 12.5, marginTop: 3 }}>{it.requesterPhone} • {fmtDate(it.createdAt)}</div>
-              {it.status === "pending" && (
-                <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
-                  <button style={{ ...styles.btnPrimary, width: "auto", padding: "9px 18px" }} onClick={() => respondToInterest(it.id, "accepted")}>ஏற்றுக்கொள்</button>
-                  <button style={{ ...styles.btnGhost, width: "auto", padding: "9px 18px" }} onClick={() => respondToInterest(it.id, "rejected")}>நிராகரி</button>
+          {myInterestsReceived.map((it) => {
+            const from = approvedProfiles.find((p) => p.id === it.requesterProfileId);
+            const age = from ? calcAge(from.dob) : null;
+            return (
+              <div key={it.id} style={{ background: "#0B1220", border: "1px solid #1E2A44", borderRadius: 10, padding: "12px", marginBottom: 8 }}>
+                <div style={{ fontWeight: 700, fontSize: 14 }}>{from ? `Profile #${from.memberId ?? "-"}` : "சுயவிவரம்"}</div>
+                <div style={{ color: "#7C8CAE", fontSize: 12.5, marginTop: 3 }}>
+                  {age !== null ? `${age} வயது` : ""}{from?.district ? ` • ${from.district}` : ""} • {fmtDate(it.createdAt)}
                 </div>
-              )}
-              {it.status === "accepted" && <p style={{ color: "#8ADB9A", fontSize: 12.5, marginTop: 8 }}>✓ ஏற்றுக்கொண்டீர்கள்</p>}
-              {it.status === "rejected" && <p style={{ color: "#E4677E", fontSize: 12.5, marginTop: 8 }}>நிராகரித்தீர்கள்</p>}
-            </div>
-          ))}
+                {it.status === "pending" && (
+                  <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+                    <button style={{ ...styles.btnPrimary, width: "auto", padding: "9px 18px" }} onClick={() => respondToInterest(it.id, "accepted")}>ஏற்றுக்கொள்</button>
+                    <button style={{ ...styles.btnGhost, width: "auto", padding: "9px 18px" }} onClick={() => respondToInterest(it.id, "rejected")}>நிராகரி</button>
+                  </div>
+                )}
+                {it.status === "accepted" && <p style={{ color: "#8ADB9A", fontSize: 12.5, marginTop: 8 }}>✓ ஏற்றுக்கொண்டீர்கள்</p>}
+                {it.status === "rejected" && <p style={{ color: "#E4677E", fontSize: 12.5, marginTop: 8 }}>நிராகரித்தீர்கள்</p>}
+              </div>
+            );
+          })}
         </div>
 
         <div style={styles.section}>
@@ -1867,13 +1862,19 @@ export default function MatrimonyApp() {
             {interests.map((it) => {
               const target = allProfiles.find((p) => p.id === it.profileId);
               const targetPhone = target ? allPrivate[target.id]?.contact?.phone : null;
+              const from = allProfiles.find((p) => p.id === it.requesterProfileId);
+              const fromName = from ? allPrivate[from.id]?.identity?.name : null;
+              const fromPhone = from ? allPrivate[from.id]?.contact?.phone : null;
               return (
                 <div key={it.id} style={{ background: "#0B1220", border: "1px solid #1E2A44", borderRadius: 12, padding: "14px", marginBottom: 10 }}>
                   <div style={styles.row}>
                     <div>
-                      <div style={{ fontWeight: 700, fontSize: 14.5 }}>{it.requesterName} <span style={{ color: "#7C8CAE", fontWeight: 400, fontSize: 12.5 }}>→ {target ? `Profile #${target.memberId ?? "-"}` : "(நீக்கப்பட்ட சுயவிவரம்)"}</span></div>
+                      <div style={{ fontWeight: 700, fontSize: 14.5 }}>
+                        {fromName || (from ? `Profile #${from.memberId ?? "-"}` : "(நீக்கப்பட்ட சுயவிவரம்)")}
+                        <span style={{ color: "#7C8CAE", fontWeight: 400, fontSize: 12.5 }}> → {target ? `Profile #${target.memberId ?? "-"}` : "(நீக்கப்பட்ட சுயவிவரம்)"}</span>
+                      </div>
                       <div style={{ color: "#7C8CAE", fontSize: 12.5, marginTop: 3 }}>
-                        {it.requesterPhone}{targetPhone ? ` • சுயவிவர எண்: ${targetPhone}` : ""} • {fmtDate(it.createdAt)}
+                        {fromPhone ? `அனுப்பியவர்: ${fromPhone}` : ""}{targetPhone ? ` • பெறுபவர்: ${targetPhone}` : ""} • {fmtDate(it.createdAt)}
                       </div>
                       <div style={{ color: "#F2A93B", fontSize: 12, marginTop: 3 }}>நிலை: {INTEREST_STATUS_LABELS[it.status] || it.status || "-"}</div>
                     </div>
