@@ -284,6 +284,47 @@ function Back({ to, label, logout, onGo }) {
   );
 }
 
+// Fixed bottom tab bar for the logged-in member area, so Dashboard / Search
+// / Interests are always one tap away instead of buried inside each other.
+const NAV_ITEMS = [
+  { key: "memberDashboard", icon: "🏠", label: "Dashboard" },
+  { key: "browse", icon: "🔍", label: "தேடல்" },
+  { key: "myInterests", icon: "💌", label: "விருப்பங்கள்" },
+];
+function BottomNav({ active, onGo }) {
+  return (
+    <>
+      <div style={{ height: 74 }} />
+      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, display: "flex", background: "#FFFFFF", borderTop: "1px solid #EFDFC0", boxShadow: "0 -4px 14px -6px rgba(74,16,32,0.15)", zIndex: 10 }}>
+        {NAV_ITEMS.map((item) => (
+          <button
+            key={item.key}
+            onClick={() => onGo(item.key)}
+            style={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 2,
+              padding: "10px 4px 8px",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              color: active === item.key ? "#7A1F3D" : "#9C8874",
+              fontWeight: active === item.key ? 700 : 500,
+              fontFamily: "inherit",
+              fontSize: 11.5,
+            }}
+          >
+            <span style={{ fontSize: 20 }}>{item.icon}</span>
+            {item.label}
+          </button>
+        ))}
+      </div>
+    </>
+  );
+}
+
 function WhatsAppIcon() {
   return (
     <svg width="19" height="19" viewBox="0 0 24 24" fill="#04240F" aria-hidden="true">
@@ -532,7 +573,7 @@ export default function MatrimonyApp() {
   const [myEditDraft, setMyEditDraft] = useState(EMPTY_PROFILE);
 
   // browse filters
-  const [filters, setFilters] = useState({ gender: "", district: "", maritalStatus: "", minAge: "", maxAge: "" });
+  const [filters, setFilters] = useState({ gender: "", district: "", maritalStatus: "", religion: "", profession: "", education: "", minAge: "", maxAge: "" });
 
   // profile detail: unlocked private data for the profile being viewed
   const [viewedIdentity, setViewedIdentity] = useState(null);
@@ -1144,7 +1185,10 @@ export default function MatrimonyApp() {
     return approvedProfiles.filter((p) => {
       if (filters.gender && p.gender !== filters.gender) return false;
       if (filters.maritalStatus && p.maritalStatus !== filters.maritalStatus) return false;
+      if (filters.religion && p.religion !== filters.religion) return false;
       if (filters.district && !(p.district || "").toLowerCase().includes(filters.district.trim().toLowerCase())) return false;
+      if (filters.profession && !(p.profession || "").toLowerCase().includes(filters.profession.trim().toLowerCase())) return false;
+      if (filters.education && !(p.education || "").toLowerCase().includes(filters.education.trim().toLowerCase())) return false;
       const age = calcAge(p.dob);
       if (filters.minAge && (age === null || age < Number(filters.minAge))) return false;
       if (filters.maxAge && (age === null || age > Number(filters.maxAge))) return false;
@@ -1319,6 +1363,17 @@ export default function MatrimonyApp() {
               <option key={m} value={m}>{m}</option>
             ))}
           </select>
+          <label style={styles.label}>மதம்</label>
+          <select style={styles.input} value={filters.religion} onChange={(e) => setFilters({ ...filters, religion: e.target.value })}>
+            <option value="">அனைத்தும்</option>
+            {RELIGIONS.map((r) => (
+              <option key={r} value={r}>{r}</option>
+            ))}
+          </select>
+          <label style={styles.label}>தொழில்</label>
+          <input style={styles.input} value={filters.profession} onChange={(e) => setFilters({ ...filters, profession: e.target.value })} placeholder="எ.கா. ஆசிரியர்" />
+          <label style={styles.label}>கல்வித் தகுதி</label>
+          <input style={styles.input} value={filters.education} onChange={(e) => setFilters({ ...filters, education: e.target.value })} placeholder="எ.கா. பட்டதாரி" />
           <div style={{ display: "flex", gap: 10 }}>
             <div style={{ flex: 1 }}>
               <label style={styles.label}>குறைந்த வயது</label>
@@ -1352,6 +1407,8 @@ export default function MatrimonyApp() {
             </button>
           );
         })}
+
+        <BottomNav active="browse" onGo={setScreen} />
       </div>
     );
   }
@@ -1620,8 +1677,22 @@ export default function MatrimonyApp() {
 
         <div style={styles.section}>
           <button style={styles.roleCard} onClick={() => { setError(""); setScreen("browse"); }}>
-            <span style={{ fontSize: 26 }}>💞</span><span>சுயவிவரங்களை பார்வையிட</span>
+            <span style={{ fontSize: 26 }}>💞</span><span>துணையைத் தேட (Search Matches)</span>
           </button>
+        </div>
+
+        <div style={styles.card}>
+          <div style={styles.eyebrow}>விரைவு தேடல் (Quick Search)</div>
+          <label style={styles.label}>மாவட்டம்</label>
+          <input style={styles.input} value={filters.district} onChange={(e) => setFilters({ ...filters, district: e.target.value })} placeholder="எ.கா. யாழ்ப்பாணம்" />
+          <label style={styles.label}>மதம்</label>
+          <select style={styles.input} value={filters.religion} onChange={(e) => setFilters({ ...filters, religion: e.target.value })}>
+            <option value="">அனைத்தும்</option>
+            {RELIGIONS.map((r) => (
+              <option key={r} value={r}>{r}</option>
+            ))}
+          </select>
+          <button style={{ ...styles.btnPrimary, marginBottom: 0 }} onClick={() => setScreen("browse")}>🔍 தேடு</button>
         </div>
 
         <div style={styles.card}>
@@ -1695,6 +1766,35 @@ export default function MatrimonyApp() {
           </div>
         )}
 
+        <button style={{ ...styles.card, display: "block", width: "calc(100% - 40px)", textAlign: "left", cursor: "pointer", border: "1px solid #EFDFC0" }} onClick={() => setScreen("myInterests")}>
+          <div style={styles.eyebrow}>விருப்பங்கள்</div>
+          <div style={{ fontWeight: 700, fontSize: 15, color: "#6B1A38" }}>
+            📥 {myInterestsReceived.length} வந்தவை • 📤 {myInterestsSent.length} அனுப்பியவை
+          </div>
+          <div style={{ color: "#9C8874", fontSize: 12.5, marginTop: 4 }}>எல்லாவற்றையும் பார்க்க தட்டவும் →</div>
+        </button>
+
+        <BottomNav active="memberDashboard" onGo={setScreen} />
+      </div>
+    );
+  }
+
+  // ---------- MY INTERESTS (sent + received) ----------
+  if (screen === "myInterests") {
+    if (!authUser) {
+      setScreen("memberLogin");
+      return null;
+    }
+    return (
+      <div style={styles.page}>
+        <Header siteName={settings.siteName} onAdminClick={goAdmin} />
+        <Back to="memberDashboard" label="பின்செல்" onGo={goTo} />
+        <div style={styles.section}>
+          <div style={styles.eyebrow}>விருப்பங்கள்</div>
+          <h1 style={styles.h1}>எனது விருப்பங்கள்</h1>
+        </div>
+        {error && <div style={styles.errBox}>{error}</div>}
+
         <div style={styles.section}>
           <div style={styles.sectionTitle}>📥 எனக்கு வந்த விருப்பங்கள் ({myInterestsReceived.length})</div>
         </div>
@@ -1708,7 +1808,7 @@ export default function MatrimonyApp() {
                 {from ? (
                   <button
                     style={{ background: "none", border: "none", padding: 0, textAlign: "left", cursor: "pointer", width: "100%" }}
-                    onClick={() => { setSelectedProfileId(from.id); setProfileReturnTo("memberDashboard"); setScreen("profile"); }}
+                    onClick={() => { setSelectedProfileId(from.id); setProfileReturnTo("myInterests"); setScreen("profile"); }}
                   >
                     <div style={{ fontWeight: 700, fontSize: 14, color: "#7A1F3D", textDecoration: "underline" }}>Profile #{from.memberId ?? "-"} சுயவிவரத்தை பார்க்க →</div>
                     <div style={{ color: "#9C8874", fontSize: 12.5, marginTop: 3 }}>
@@ -1749,6 +1849,8 @@ export default function MatrimonyApp() {
             );
           })}
         </div>
+
+        <BottomNav active="myInterests" onGo={setScreen} />
       </div>
     );
   }
