@@ -1374,7 +1374,7 @@ export default function MatrimonyApp() {
           </div>
 
           <button
-            style={{ ...styles.linkBtn, marginTop: 16, display: "block" }}
+            style={{ ...styles.btnGhost, marginTop: 16, marginBottom: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
             onClick={() => setAdvancedSearchOpen(!advancedSearchOpen)}
           >
             {advancedSearchOpen ? "▲" : "▼"} மேலும் தேடல் விருப்பங்கள் (Advanced Search)
