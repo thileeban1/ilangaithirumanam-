@@ -116,13 +116,22 @@ service cloud.firestore {
                     && request.resource.data.requesterName is string
                     && request.resource.data.requesterName.size() > 0
                     && request.resource.data.requesterPhone is string
-                    && request.resource.data.requesterPhone.size() > 0;
+                    && request.resource.data.requesterPhone.size() > 0
+                    && request.resource.data.status == 'pending';
       // Visible to: the admin, whoever sent the request (if logged in when
       // they sent it), and the profile owner it was sent to — nobody else.
       allow read: if isAdmin()
                   || (request.auth != null && resource.data.requesterUid == request.auth.uid)
                   || (request.auth != null && resource.data.recipientUid == request.auth.uid);
-      allow update, delete: if isAdmin();
+      // The recipient may only accept/reject a still-pending request —
+      // nothing else about it, and not a second time once decided. Admin
+      // can change or delete anything.
+      allow update: if isAdmin()
+                    || (request.auth != null && resource.data.recipientUid == request.auth.uid
+                        && resource.data.status == 'pending'
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+                        && request.resource.data.status in ['accepted', 'rejected']);
+      allow delete: if isAdmin();
     }
 
     match /{document=**} {

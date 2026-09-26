@@ -130,7 +130,7 @@ const EMPTY_PROFILE = {
 // single-photo field (photoUrl) or the current multi-photo array (photoUrls).
 const allPhotosOf = (p) => (p?.photoUrls && p.photoUrls.length > 0 ? p.photoUrls : p?.photoUrl ? [p.photoUrl] : []);
 
-const EMPTY_INTEREST = { requesterName: "", requesterPhone: "", message: "" };
+const EMPTY_INTEREST = { requesterName: "", requesterPhone: "" };
 
 const DEFAULT_SETTINGS = {
   siteName: "இலங்கை தமிழர் திருமண மையம்",
@@ -185,6 +185,7 @@ const waLink = (phone, text) => {
 };
 
 const STATUS_LABELS = { pending: "பரிசீலனையில்", approved: "ஏற்றுக்கொள்ளப்பட்டது", rejected: "நிராகரிக்கப்பட்டது" };
+const INTEREST_STATUS_LABELS = { pending: "பதிலுக்கு காத்திருக்கிறது", accepted: "ஏற்றுக்கொள்ளப்பட்டது", rejected: "நிராகரிக்கப்பட்டது" };
 
 const assignMemberId = async () => {
   const counterRef = doc(db, "counters", "memberId");
@@ -717,7 +718,7 @@ export default function MatrimonyApp() {
 
   useEffect(() => {
     if (authUser && !isAdminUser && myIdentity && myContact) {
-      setInterestForm({ requesterName: myIdentity.name || "", requesterPhone: myContact.phone || "", message: "" });
+      setInterestForm({ requesterName: myIdentity.name || "", requesterPhone: myContact.phone || "" });
     } else {
       setInterestForm(EMPTY_INTEREST);
     }
@@ -854,7 +855,7 @@ export default function MatrimonyApp() {
         requesterUid: authUser && !isAdminUser ? authUser.uid : null,
         requesterName: interestForm.requesterName.trim(),
         requesterPhone: interestForm.requesterPhone.trim(),
-        message: interestForm.message.trim(),
+        status: "pending",
         createdAt: serverTimestamp(),
       });
       setInterestDone(true);
@@ -862,6 +863,15 @@ export default function MatrimonyApp() {
       setError("அனுப்ப முடியவில்லை. மீண்டும் முயற்சிக்கவும்.");
     } finally {
       setInterestBusy(false);
+    }
+  };
+
+  // ---------- member: accept/reject a received interest ----------
+  const respondToInterest = async (interestId, status) => {
+    try {
+      await updateDoc(doc(db, INTERESTS_COLLECTION, interestId), { status });
+    } catch (e) {
+      setError("செயல்படுத்த முடியவில்லை.");
     }
   };
 
@@ -1442,18 +1452,16 @@ export default function MatrimonyApp() {
         <div style={styles.card}>
           <div style={styles.eyebrow}>விருப்பம் தெரிவிக்க (இலவசம்)</div>
           <p style={{ color: "#9FB0CE", fontSize: 13.5, lineHeight: 1.6, marginTop: 0 }}>
-            Credits இல்லாமலேயே ஒரு விருப்ப செய்தி அனுப்பலாம் — நிர்வாகி இரு தரப்பையும் இணைப்பார்.
+            Credits இல்லாமலேயே இந்த சுயவிவரத்திற்கு விருப்பம் தெரிவிக்கலாம் — அவர்கள் ஏற்றுக்கொண்டால் உங்கள் பெயர் + தொடர்பு எண் அவர்களுக்குத் தெரியும்.
           </p>
           {interestDone ? (
-            <div style={styles.flash}>உங்கள் விருப்பம் பதிவு செய்யப்பட்டது. நிர்வாகி விரைவில் தொடர்பு கொள்வார்.</div>
+            <div style={styles.flash}>உங்கள் விருப்பம் அனுப்பப்பட்டது. அவர்களின் பதிலை "எனது Dashboard"-ல் பார்க்கலாம்.</div>
           ) : (
             <>
               <label style={styles.label}>உங்கள் பெயர் *</label>
               <input style={styles.input} value={interestForm.requesterName} onChange={(e) => setInterestForm({ ...interestForm, requesterName: e.target.value })} />
               <label style={styles.label}>உங்கள் தொடர்பு எண் *</label>
               <input style={styles.input} value={interestForm.requesterPhone} onChange={(e) => setInterestForm({ ...interestForm, requesterPhone: e.target.value })} />
-              <label style={styles.label}>செய்தி (விருப்பம்)</label>
-              <textarea style={styles.textarea} value={interestForm.message} onChange={(e) => setInterestForm({ ...interestForm, message: e.target.value })} />
               <button style={styles.btnPrimary} onClick={handleInterestSubmit} disabled={interestBusy}>
                 {interestBusy ? "அனுப்புகிறது…" : "விருப்பம் தெரிவிக்க"}
               </button>
@@ -1691,7 +1699,14 @@ export default function MatrimonyApp() {
             <div key={it.id} style={{ background: "#0B1220", border: "1px solid #1E2A44", borderRadius: 10, padding: "12px", marginBottom: 8 }}>
               <div style={{ fontWeight: 700, fontSize: 14 }}>{it.requesterName}</div>
               <div style={{ color: "#7C8CAE", fontSize: 12.5, marginTop: 3 }}>{it.requesterPhone} • {fmtDate(it.createdAt)}</div>
-              {it.message && <div style={{ color: "#9FB0CE", fontSize: 13, marginTop: 6 }}>{it.message}</div>}
+              {it.status === "pending" && (
+                <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+                  <button style={{ ...styles.btnPrimary, width: "auto", padding: "9px 18px" }} onClick={() => respondToInterest(it.id, "accepted")}>ஏற்றுக்கொள்</button>
+                  <button style={{ ...styles.btnGhost, width: "auto", padding: "9px 18px" }} onClick={() => respondToInterest(it.id, "rejected")}>நிராகரி</button>
+                </div>
+              )}
+              {it.status === "accepted" && <p style={{ color: "#8ADB9A", fontSize: 12.5, marginTop: 8 }}>✓ ஏற்றுக்கொண்டீர்கள்</p>}
+              {it.status === "rejected" && <p style={{ color: "#E4677E", fontSize: 12.5, marginTop: 8 }}>நிராகரித்தீர்கள்</p>}
             </div>
           ))}
         </div>
@@ -1706,7 +1721,7 @@ export default function MatrimonyApp() {
             return (
               <div key={it.id} style={{ background: "#0B1220", border: "1px solid #1E2A44", borderRadius: 10, padding: "12px", marginBottom: 8 }}>
                 <div style={{ fontWeight: 700, fontSize: 14 }}>{target ? `Profile #${target.memberId ?? "-"}` : "சுயவிவரம்"}</div>
-                <div style={{ color: "#7C8CAE", fontSize: 12.5, marginTop: 3 }}>{fmtDate(it.createdAt)}</div>
+                <div style={{ color: "#7C8CAE", fontSize: 12.5, marginTop: 3 }}>{fmtDate(it.createdAt)} • {INTEREST_STATUS_LABELS[it.status] || it.status}</div>
               </div>
             );
           })}
@@ -1860,7 +1875,7 @@ export default function MatrimonyApp() {
                       <div style={{ color: "#7C8CAE", fontSize: 12.5, marginTop: 3 }}>
                         {it.requesterPhone}{targetPhone ? ` • சுயவிவர எண்: ${targetPhone}` : ""} • {fmtDate(it.createdAt)}
                       </div>
-                      {it.message && <div style={{ color: "#9FB0CE", fontSize: 13, marginTop: 6 }}>{it.message}</div>}
+                      <div style={{ color: "#F2A93B", fontSize: 12, marginTop: 3 }}>நிலை: {INTEREST_STATUS_LABELS[it.status] || it.status || "-"}</div>
                     </div>
                     <button style={styles.dangerBtn} onClick={() => deleteInterest(it.id)}>நீக்கு</button>
                   </div>
