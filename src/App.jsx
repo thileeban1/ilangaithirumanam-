@@ -2089,11 +2089,13 @@ export default function MatrimonyApp() {
                     <div>
                       {isMatch && <div style={{ color: "#2F7D4F", fontWeight: 700, fontSize: 12.5, marginBottom: 4 }}>💚 மேட்ச் ஆனது — இருவரும் ஏற்றுக்கொண்டனர்</div>}
                       <div style={{ fontWeight: 700, fontSize: 14.5 }}>
-                        {fromName || (from ? `Profile ${from.memberId ?? "-"}` : "(நீக்கப்பட்ட சுயவிவரம்)")}
-                        <span style={{ color: "#9C8874", fontWeight: 400, fontSize: 12.5 }}> → {target ? `Profile ${target.memberId ?? "-"}` : "(நீக்கப்பட்ட சுயவிவரம்)"}</span>
+                        {from ? `Profile ${from.memberId ?? "-"}` : "(நீக்கப்பட்ட சுயவிவரம்)"}
+                        <span style={{ color: "#9C8874", fontWeight: 400 }}> → </span>
+                        {target ? `Profile ${target.memberId ?? "-"}` : "(நீக்கப்பட்ட சுயவிவரம்)"}
+                        {fromName && <span style={{ color: "#9C8874", fontWeight: 400, fontSize: 12.5 }}> ({fromName})</span>}
                       </div>
                       <div style={{ color: "#9C8874", fontSize: 12.5, marginTop: 3 }}>
-                        {fromPhone ? `அனுப்பியவர்: ${fromPhone}` : ""}{targetPhone ? ` • பெறுபவர்: ${targetPhone}` : ""} • {fmtDate(it.createdAt)}
+                        {fromPhone ? `அனுப்பியவர் (Profile ${from?.memberId ?? "-"}) போன்: ${fromPhone}` : ""}{targetPhone ? ` • பெறுபவர் (Profile ${target?.memberId ?? "-"}) போன்: ${targetPhone}` : ""} • {fmtDate(it.createdAt)}
                       </div>
                       {!isMatch && <div style={{ color: "#A9720F", fontSize: 12, marginTop: 3 }}>நிலை: {INTEREST_STATUS_LABELS[it.status] || it.status || "-"}</div>}
                     </div>
