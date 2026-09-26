@@ -1,0 +1,131 @@
+rules_version = '2';
+
+// Roles in this LMS ("கதிரவன்"):
+// - Admin: an account YOU create manually in Firebase Console -> Authentication,
+//   then list in the "admins" collection (doc id = their auth uid). Only the
+//   admin can create courses, post announcements, and generate access codes.
+// - Teacher / Student: NEVER sign up with email/password. The admin generates
+//   a short access code (accessCodes/{code}) with a role, a name label, and
+//   the course(s) it grants access to. The person only ever enters that code
+//   in the app -- the first time, the app creates their account behind the
+//   scenes (synthetic email + the code itself as the password) and copies
+//   the code's role/name/courseIds into users/{uid}; every time after that,
+//   the same code just signs them back in. courseIds is the single source of
+//   truth for what a teacher can post to / what a student can see -- there is
+//   no separate "enrollment" step.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    function myCourseIds() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.courseIds;
+    }
+
+    function myRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isCourseTeacher(courseId) {
+      return isSignedIn() && myRole() == 'teacher' && courseId in myCourseIds();
+    }
+
+    function isEnrolled(courseId) {
+      return isSignedIn() && myRole() == 'student' && courseId in myCourseIds();
+    }
+
+    match /admins/{uid} {
+      allow read: if isSignedIn() && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    // A code must be readable by "get" while the person is still signed out
+    // (to check it exists / isn't already claimed before creating their
+    // account), but the full list is admin-only so codes can't be enumerated.
+    match /accessCodes/{code} {
+      allow get: if true;
+      allow list: if isAdmin();
+      allow create: if isAdmin()
+                    && request.resource.data.role in ['teacher', 'student']
+                    && request.resource.data.claimed == false
+                    && request.resource.data.courseIds is list;
+      // Claiming: the newly-created/signed-in user marks their own code
+      // claimed, but can never change its role or course grant while doing so.
+      allow update: if isAdmin()
+                    || (isSignedIn()
+                        && resource.data.claimed == false
+                        && request.resource.data.claimed == true
+                        && request.resource.data.claimedByUid == request.auth.uid
+                        && request.resource.data.role == resource.data.role
+                        && request.resource.data.courseIds == resource.data.courseIds);
+      allow delete: if isAdmin();
+    }
+
+    match /users/{uid} {
+      allow get: if isAdmin() || (isSignedIn() && request.auth.uid == uid);
+      allow list: if isAdmin();
+      // Only createable as part of claiming a real, unclaimed access code,
+      // and only with exactly that code's role + courseIds.
+      allow create: if isSignedIn() && request.auth.uid == uid
+                    && request.resource.data.role in ['teacher', 'student']
+                    && request.resource.data.name is string
+                    && request.resource.data.name.size() > 0
+                    && request.resource.data.code is string
+                    && exists(/databases/$(database)/documents/accessCodes/$(request.resource.data.code))
+                    && get(/databases/$(database)/documents/accessCodes/$(request.resource.data.code)).data.claimed == false
+                    && get(/databases/$(database)/documents/accessCodes/$(request.resource.data.code)).data.role == request.resource.data.role
+                    && request.resource.data.courseIds == get(/databases/$(database)/documents/accessCodes/$(request.resource.data.code)).data.courseIds;
+      // Admin can change anything (e.g. grant/revoke course access). The
+      // owner can never touch their own role/courseIds/code.
+      allow update: if isAdmin()
+                    || (isSignedIn() && request.auth.uid == uid
+                        && request.resource.data.role == resource.data.role
+                        && request.resource.data.courseIds == resource.data.courseIds
+                        && request.resource.data.code == resource.data.code);
+      allow delete: if isAdmin();
+    }
+
+    match /courses/{courseId} {
+      allow read: if isSignedIn();
+      allow create: if isAdmin()
+                    && request.resource.data.title is string
+                    && request.resource.data.title.size() > 0;
+      allow update, delete: if isAdmin();
+
+      match /lessons/{lessonId} {
+        allow read: if isAdmin() || isCourseTeacher(courseId) || isEnrolled(courseId);
+        allow create, update, delete: if isAdmin() || isCourseTeacher(courseId);
+
+        // A student's own view counter for the lesson's recording link,
+        // capped at 3 -- enforced here, not just in the UI.
+        match /recordingViews/{uid} {
+          allow read: if isAdmin() || isCourseTeacher(courseId) || (isSignedIn() && request.auth.uid == uid);
+          allow create: if isSignedIn() && request.auth.uid == uid
+                        && isEnrolled(courseId)
+                        && request.resource.data.count == 1;
+          allow update: if isSignedIn() && request.auth.uid == uid
+                        && isEnrolled(courseId)
+                        && request.resource.data.count == resource.data.count + 1
+                        && request.resource.data.count <= 3;
+        }
+      }
+    }
+
+    // Admin-posted notices / timetable, visible to every signed-in account.
+    match /announcements/{id} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
