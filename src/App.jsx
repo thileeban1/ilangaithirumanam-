@@ -1200,6 +1200,13 @@ export default function MatrimonyApp() {
   const pendingProfiles = useMemo(() => allProfiles.filter((p) => p.status === "pending"), [allProfiles]);
   const approvedAdminProfiles = useMemo(() => allProfiles.filter((p) => p.status === "approved"), [allProfiles]);
   const rejectedProfiles = useMemo(() => allProfiles.filter((p) => p.status === "rejected"), [allProfiles]);
+  // Both sides liked each other -- surfaced separately so the admin notices
+  // a new match without having to scan every interest request.
+  const matchedInterests = useMemo(() => interests.filter((it) => it.status === "accepted"), [interests]);
+  const sortedInterests = useMemo(
+    () => [...interests].sort((a, b) => (a.status === "accepted" ? -1 : 0) - (b.status === "accepted" ? -1 : 0)),
+    [interests]
+  );
   const selectedProfile = approvedProfiles.find((p) => p.id === selectedProfileId) || null;
   // Traces a leaked screenshot back to whoever was viewing the photo when it
   // was taken, since a web page can't actually prevent a screenshot.
@@ -1723,31 +1730,43 @@ export default function MatrimonyApp() {
           <button style={{ ...styles.btnPrimary, marginBottom: 0 }} onClick={() => setScreen("browse")}>🔍 தேடு</button>
         </div>
 
-        <button
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 16,
-            width: "calc(100% - 40px)",
-            textAlign: "left",
-            cursor: "pointer",
-            border: "1px solid #D988AC",
-            background: "linear-gradient(135deg, #F9D3E4 0%, #EFA9C9 100%)",
-            borderRadius: 16,
-            padding: "20px",
-            margin: "0 18px 16px",
-            boxShadow: "0 6px 16px -6px rgba(216,136,172,0.5)",
-          }}
-          onClick={() => setScreen("myInterests")}
-        >
-          <span style={{ fontSize: 30, flexShrink: 0 }}>💗</span>
-          <div>
-            <div style={{ fontFamily: "'Fraunces',serif", fontWeight: 700, fontSize: 17, color: "#5A1030" }}>விருப்பங்கள்</div>
-            <div style={{ color: "#8A2C52", fontSize: 13, marginTop: 4 }}>
-              📥 {myInterestsReceived.length} வந்தவை • 📤 {myInterestsSent.length} அனுப்பியவை
-            </div>
-          </div>
-        </button>
+        <div style={styles.section}>
+          <button
+            style={{
+              ...styles.roleCard,
+              justifyContent: "space-between",
+              border: "1px solid #D988AC",
+              background: "linear-gradient(135deg, #F9D3E4 0%, #EFA9C9 100%)",
+              color: "#5A1030",
+              boxShadow: "0 6px 16px -6px rgba(216,136,172,0.5)",
+            }}
+            onClick={() => setScreen("myInterests")}
+          >
+            <span style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <span style={{ fontSize: 26 }}>💗</span><span>விருப்பங்கள் பார்க்க</span>
+            </span>
+            {myInterestsReceived.length + myInterestsSent.length > 0 && (
+              <span
+                style={{
+                  background: "#8A2C52",
+                  color: "#fff",
+                  borderRadius: 999,
+                  minWidth: 26,
+                  height: 26,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 12.5,
+                  fontWeight: 700,
+                  padding: "0 8px",
+                  fontFamily: "'IBM Plex Mono',monospace",
+                }}
+              >
+                {myInterestsReceived.length + myInterestsSent.length}
+              </span>
+            )}
+          </button>
+        </div>
 
         {!myProfile && (
           <div style={styles.card}>
@@ -1989,7 +2008,15 @@ export default function MatrimonyApp() {
           <button style={styles.tabBtn(adminTab === "pending")} onClick={() => setAdminTab("pending")}>பரிசீலனையில் ({pendingProfiles.length})</button>
           <button style={styles.tabBtn(adminTab === "approved")} onClick={() => setAdminTab("approved")}>ஏற்கப்பட்டவை ({approvedAdminProfiles.length})</button>
           <button style={styles.tabBtn(adminTab === "rejected")} onClick={() => setAdminTab("rejected")}>நிராகரிக்கப்பட்டவை ({rejectedProfiles.length})</button>
-          <button style={styles.tabBtn(adminTab === "interests")} onClick={() => setAdminTab("interests")}>ஆர்வம் தெரிவித்தவர் ({interests.length})</button>
+          <button
+            style={{
+              ...styles.tabBtn(adminTab === "interests"),
+              ...(matchedInterests.length > 0 && adminTab !== "interests" ? { border: "1.5px solid #2F7D4F", color: "#2F7D4F", background: "#EAF7EE" } : {}),
+            }}
+            onClick={() => setAdminTab("interests")}
+          >
+            ஆர்வம் தெரிவித்தவர் ({interests.length}){matchedInterests.length > 0 ? ` • 💚 ${matchedInterests.length} மேட்ச்` : ""}
+          </button>
           <button style={styles.tabBtn(adminTab === "settings")} onClick={() => setAdminTab("settings")}>அமைப்புகள்</button>
         </div>
 
@@ -2035,16 +2062,21 @@ export default function MatrimonyApp() {
         {adminTab === "interests" && (
           <div style={styles.card}>
             {interests.length === 0 && <p style={{ color: "#7A6353", fontSize: 14, margin: 0 }}>ஆர்வம் தெரிவித்தவர்கள் இல்லை.</p>}
-            {interests.map((it) => {
+            {matchedInterests.length > 0 && (
+              <p style={{ color: "#2F7D4F", fontSize: 13, fontWeight: 700, marginTop: 0 }}>💚 இருவரும் ஏற்றுக்கொண்ட மேட்ச்கள் கீழே முதலில் காட்டப்படுகின்றன.</p>
+            )}
+            {sortedInterests.map((it) => {
               const target = allProfiles.find((p) => p.id === it.profileId);
               const targetPhone = target ? allPrivate[target.id]?.contact?.phone : null;
               const from = allProfiles.find((p) => p.id === it.requesterProfileId);
               const fromName = from ? allPrivate[from.id]?.identity?.name : null;
               const fromPhone = from ? allPrivate[from.id]?.contact?.phone : null;
+              const isMatch = it.status === "accepted";
               return (
-                <div key={it.id} style={{ background: "#FBF5EA", border: "1px solid #EFDFC0", borderRadius: 12, padding: "14px", marginBottom: 10 }}>
+                <div key={it.id} style={{ background: isMatch ? "#EAF7EE" : "#FBF5EA", border: isMatch ? "1.5px solid #2F7D4F" : "1px solid #EFDFC0", borderRadius: 12, padding: "14px", marginBottom: 10 }}>
                   <div style={styles.row}>
                     <div>
+                      {isMatch && <div style={{ color: "#2F7D4F", fontWeight: 700, fontSize: 12.5, marginBottom: 4 }}>💚 மேட்ச் ஆனது — இருவரும் ஏற்றுக்கொண்டனர்</div>}
                       <div style={{ fontWeight: 700, fontSize: 14.5 }}>
                         {fromName || (from ? `Profile ${from.memberId ?? "-"}` : "(நீக்கப்பட்ட சுயவிவரம்)")}
                         <span style={{ color: "#9C8874", fontWeight: 400, fontSize: 12.5 }}> → {target ? `Profile ${target.memberId ?? "-"}` : "(நீக்கப்பட்ட சுயவிவரம்)"}</span>
@@ -2052,7 +2084,7 @@ export default function MatrimonyApp() {
                       <div style={{ color: "#9C8874", fontSize: 12.5, marginTop: 3 }}>
                         {fromPhone ? `அனுப்பியவர்: ${fromPhone}` : ""}{targetPhone ? ` • பெறுபவர்: ${targetPhone}` : ""} • {fmtDate(it.createdAt)}
                       </div>
-                      <div style={{ color: "#A9720F", fontSize: 12, marginTop: 3 }}>நிலை: {INTEREST_STATUS_LABELS[it.status] || it.status || "-"}</div>
+                      {!isMatch && <div style={{ color: "#A9720F", fontSize: 12, marginTop: 3 }}>நிலை: {INTEREST_STATUS_LABELS[it.status] || it.status || "-"}</div>}
                     </div>
                     <button style={styles.dangerBtn} onClick={() => deleteInterest(it.id)}>நீக்கு</button>
                   </div>
