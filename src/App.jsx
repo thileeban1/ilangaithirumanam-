@@ -493,6 +493,7 @@ export default function MatrimonyApp() {
   const [packageDrafts, setPackageDrafts] = useState({});
   const [approvedProfiles, setApprovedProfiles] = useState([]);
   const [selectedProfileId, setSelectedProfileId] = useState(null);
+  const [zoomedPhoto, setZoomedPhoto] = useState(null);
 
   // register form
   const [registerForm, setRegisterForm] = useState(EMPTY_PROFILE);
@@ -726,6 +727,7 @@ export default function MatrimonyApp() {
   useEffect(() => {
     setViewedIdentity(null);
     setViewedContact(null);
+    setZoomedPhoto(null);
     if (!selectedProfileId || !db) return;
     const targetProfile = approvedProfiles.find((p) => p.id === selectedProfileId);
     const isOwn = authUser && targetProfile && targetProfile.ownerUid === authUser.uid;
@@ -1353,7 +1355,11 @@ export default function MatrimonyApp() {
         <Back to="browse" label="பின்செல்" onGo={goTo} />
         <div style={styles.section}>
           <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-            <div style={{ ...styles.avatar, width: 84, height: 84, fontSize: 34 }}>
+            <div
+              style={{ ...styles.avatar, width: 84, height: 84, fontSize: 34, cursor: photos[0] ? "pointer" : "default", border: "none", padding: 0 }}
+              onClick={() => photos[0] && setZoomedPhoto({ src: photos[0], alt: viewedIdentity?.name || "profile" })}
+              role={photos[0] ? "button" : undefined}
+            >
               {photos[0] ? <ProtectedPhoto src={photos[0]} alt={viewedIdentity?.name || "profile"} watermark={photoWatermark} /> : "🔒"}
             </div>
             <div>
@@ -1364,12 +1370,17 @@ export default function MatrimonyApp() {
           {photos.length > 1 && (
             <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
               {photos.slice(1).map((url, i) => (
-                <div key={i} style={{ width: 70, height: 70, borderRadius: 12, overflow: "hidden", border: "1px solid #263354" }}>
+                <div
+                  key={i}
+                  style={{ width: 70, height: 70, borderRadius: 12, overflow: "hidden", border: "1px solid #263354", cursor: "pointer" }}
+                  onClick={() => setZoomedPhoto({ src: url, alt: `${viewedIdentity?.name || "profile"} ${i + 2}` })}
+                >
                   <ProtectedPhoto src={url} alt={`${viewedIdentity?.name || "profile"} ${i + 2}`} watermark={photoWatermark} />
                 </div>
               ))}
             </div>
           )}
+          {photos[0] && <p style={{ color: "#7C8CAE", fontSize: 12, marginTop: 8 }}>புகைப்படத்தை tap செய்து பெரிதாக பார்க்கவும்</p>}
         </div>
         {error && <div style={styles.errBox}>{error}</div>}
 
@@ -1449,6 +1460,24 @@ export default function MatrimonyApp() {
             </>
           )}
         </div>
+
+        {zoomedPhoto && (
+          <div
+            onClick={() => setZoomedPhoto(null)}
+            style={{ position: "fixed", inset: 0, background: "rgba(4,6,10,0.94)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
+          >
+            <button
+              onClick={() => setZoomedPhoto(null)}
+              aria-label="மூட"
+              style={{ position: "absolute", top: 18, right: 18, width: 38, height: 38, borderRadius: "50%", border: "1.5px solid #3A4A6B", background: "rgba(11,18,32,0.8)", color: "#EAF0FA", fontSize: 20, cursor: "pointer", lineHeight: "34px" }}
+            >
+              ×
+            </button>
+            <div style={{ width: "100%", maxWidth: 420, aspectRatio: "1 / 1", borderRadius: 18, overflow: "hidden", border: "1px solid #3A4A6B" }} onClick={(e) => e.stopPropagation()}>
+              <ProtectedPhoto src={zoomedPhoto.src} alt={zoomedPhoto.alt} watermark={photoWatermark} />
+            </div>
+          </div>
+        )}
       </div>
     );
   }
