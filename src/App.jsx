@@ -216,6 +216,25 @@ const styles = {
   textarea: { width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 10, border: "1.5px solid #263354", background: "#0B1220", color: "#EAF0FA", fontSize: 14.5, marginBottom: 12, fontFamily: "inherit", minHeight: 90, resize: "vertical" },
   btnPrimary: { width: "100%", padding: "13px 16px", borderRadius: 999, border: "none", background: "#C23B6B", color: "#fff", fontSize: 14.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" },
   btnGhost: { width: "100%", padding: "12px 16px", borderRadius: 999, border: "1.5px solid #C23B6B", background: "transparent", color: "#F0A9C4", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" },
+  btnWhatsapp: {
+    width: "100%",
+    boxSizing: "border-box",
+    padding: "13px 16px",
+    borderRadius: 999,
+    border: "none",
+    background: "linear-gradient(180deg, #2CE874 0%, #22C35E 100%)",
+    color: "#04240F",
+    fontSize: 14.5,
+    fontWeight: 700,
+    cursor: "pointer",
+    fontFamily: "inherit",
+    textDecoration: "none",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 9,
+    boxShadow: "0 6px 18px -6px rgba(37, 211, 102, 0.55)",
+  },
   row: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: "1px solid #1E2A44" },
   linkBtn: { color: "#F0A9C4", background: "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, padding: 0, fontFamily: "inherit" },
   dangerBtn: { color: "#E4677E", background: "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, padding: 0, fontFamily: "inherit" },
@@ -263,6 +282,15 @@ function Back({ to, label, logout, onGo }) {
     <button style={styles.backBar} onClick={() => onGo(to, logout)}>
       ← {label}
     </button>
+  );
+}
+
+function WhatsAppIcon() {
+  return (
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="#04240F" aria-hidden="true">
+      <path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.25-.46-2.38-1.47-.88-.78-1.47-1.75-1.65-2.05-.17-.3-.02-.46.13-.61.14-.14.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51-.17-.01-.37-.01-.57-.01s-.52.07-.8.37c-.27.3-1.04 1.02-1.04 2.5s1.07 2.9 1.22 3.1c.15.2 2.1 3.21 5.1 4.5.71.31 1.27.49 1.7.62.72.23 1.37.2 1.89.12.58-.09 1.76-.72 2-1.41.25-.7.25-1.29.17-1.41-.07-.12-.27-.2-.57-.35z" />
+      <path d="M12.02 2C6.5 2 2 6.48 2 12c0 1.85.5 3.58 1.36 5.08L2 22l5.06-1.33A9.96 9.96 0 0 0 12.02 22C17.53 22 22 17.52 22 12S17.53 2 12.02 2zm0 18.2c-1.62 0-3.13-.44-4.43-1.21l-.32-.19-3 .79.8-2.92-.21-.3A8.17 8.17 0 0 1 3.8 12c0-4.53 3.7-8.2 8.22-8.2 4.52 0 8.2 3.67 8.2 8.2 0 4.53-3.68 8.2-8.2 8.2z" />
+    </svg>
   );
 }
 
@@ -1180,9 +1208,9 @@ export default function MatrimonyApp() {
               href={waLink(settings.adminWhatsapp, `வணக்கம், ${settings.siteName} பற்றி விசாரிக்க விரும்புகிறேன்.`)}
               target="_blank"
               rel="noopener noreferrer"
-              style={{ ...styles.btnGhost, boxSizing: "border-box", textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+              style={styles.btnWhatsapp}
             >
-              💬 WhatsApp-ல் தொடர்பு கொள்ள
+              <WhatsAppIcon /> WhatsApp-ல் தொடர்பு கொள்ள
             </a>
           </div>
         )}
@@ -1590,9 +1618,9 @@ export default function MatrimonyApp() {
               href={waLink(settings.adminWhatsapp, `வணக்கம், எனது Profile ID ${myProfile?.memberId ?? ""} - எனக்கு ஒரு Package வாங்க விரும்புகிறேன்.`)}
               target="_blank"
               rel="noopener noreferrer"
-              style={{ ...styles.btnGhost, boxSizing: "border-box", textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 14 }}
+              style={{ ...styles.btnWhatsapp, marginTop: 14 }}
             >
-              💬 WhatsApp-ல் நிர்வாகியை தொடர்பு கொள்ள
+              <WhatsAppIcon /> WhatsApp-ல் நிர்வாகியை தொடர்பு கொள்ள
             </a>
           )}
         </div>
