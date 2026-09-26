@@ -1412,7 +1412,7 @@ export default function MatrimonyApp() {
             <button key={p.id} style={styles.profileCard} onClick={() => { setSelectedProfileId(p.id); setProfileReturnTo("browse"); setScreen("profile"); }}>
               <div style={styles.avatar}>{unlocked ? (p.gender === "பெண்" ? "👰" : "🤵") : "🔒"}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontFamily: "'Fraunces',serif", fontWeight: 700, fontSize: 16, color: "#6B1A38" }}>Profile #{p.memberId ?? "-"}</div>
+                <div style={{ fontFamily: "'Fraunces',serif", fontWeight: 700, fontSize: 16, color: "#6B1A38" }}>Profile {p.memberId ?? "-"}</div>
                 <div style={{ color: "#7A6353", fontSize: 13 }}>
                   {age !== null ? `${age} வயது` : ""}{p.district ? ` • ${p.district}` : ""}{p.profession ? ` • ${p.profession}` : ""}
                 </div>
@@ -1452,7 +1452,7 @@ export default function MatrimonyApp() {
               {photos[0] ? <ProtectedPhoto src={photos[0]} alt={viewedIdentity?.name || "profile"} watermark={photoWatermark} /> : "🔒"}
             </div>
             <div>
-              <h1 style={{ ...styles.h1, marginBottom: 2 }}>{viewedIdentity?.name || `Profile #${p.memberId ?? "-"}`}</h1>
+              <h1 style={{ ...styles.h1, marginBottom: 2 }}>{viewedIdentity?.name || `Profile ${p.memberId ?? "-"}`}</h1>
               <p style={styles.sub}>{age !== null ? `${age} வயது` : ""}{p.height ? ` • ${p.height}` : ""}</p>
             </div>
           </div>
@@ -1838,7 +1838,7 @@ export default function MatrimonyApp() {
                     style={{ background: "none", border: "none", padding: 0, textAlign: "left", cursor: "pointer", width: "100%" }}
                     onClick={() => { setSelectedProfileId(from.id); setProfileReturnTo("myInterests"); setScreen("profile"); }}
                   >
-                    <div style={{ fontWeight: 700, fontSize: 14, color: "#7A1F3D", textDecoration: "underline" }}>Profile #{from.memberId ?? "-"} சுயவிவரத்தை பார்க்க →</div>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: "#7A1F3D", textDecoration: "underline" }}>Profile {from.memberId ?? "-"} சுயவிவரத்தை பார்க்க →</div>
                     <div style={{ color: "#9C8874", fontSize: 12.5, marginTop: 3 }}>
                       {age !== null ? `${age} வயது` : ""}{from?.district ? ` • ${from.district}` : ""} • {fmtDate(it.createdAt)}
                     </div>
@@ -1871,7 +1871,7 @@ export default function MatrimonyApp() {
             const target = approvedProfiles.find((p) => p.id === it.profileId);
             return (
               <div key={it.id} style={{ background: "#FBF5EA", border: "1px solid #EFDFC0", borderRadius: 10, padding: "12px", marginBottom: 8 }}>
-                <div style={{ fontWeight: 700, fontSize: 14 }}>{target ? `Profile #${target.memberId ?? "-"}` : "சுயவிவரம்"}</div>
+                <div style={{ fontWeight: 700, fontSize: 14 }}>{target ? `Profile ${target.memberId ?? "-"}` : "சுயவிவரம்"}</div>
                 <div style={{ color: "#9C8874", fontSize: 12.5, marginTop: 3 }}>{fmtDate(it.createdAt)} • {INTEREST_STATUS_LABELS[it.status] || it.status}</div>
               </div>
             );
@@ -1906,7 +1906,7 @@ export default function MatrimonyApp() {
       const age = calcAge(p.dob);
       const isEditing = editingProfileId === p.id;
       const priv = allPrivate[p.id] || {};
-      const displayName = priv.identity?.name || `Profile #${p.memberId ?? "-"}`;
+      const displayName = priv.identity?.name || `Profile ${p.memberId ?? "-"}`;
       const displayPhone = priv.contact?.phone || "";
       return (
         <div key={p.id} style={{ background: "#FBF5EA", border: "1px solid #EFDFC0", borderRadius: 12, padding: "14px", marginBottom: 10 }}>
@@ -2028,8 +2028,8 @@ export default function MatrimonyApp() {
                   <div style={styles.row}>
                     <div>
                       <div style={{ fontWeight: 700, fontSize: 14.5 }}>
-                        {fromName || (from ? `Profile #${from.memberId ?? "-"}` : "(நீக்கப்பட்ட சுயவிவரம்)")}
-                        <span style={{ color: "#9C8874", fontWeight: 400, fontSize: 12.5 }}> → {target ? `Profile #${target.memberId ?? "-"}` : "(நீக்கப்பட்ட சுயவிவரம்)"}</span>
+                        {fromName || (from ? `Profile ${from.memberId ?? "-"}` : "(நீக்கப்பட்ட சுயவிவரம்)")}
+                        <span style={{ color: "#9C8874", fontWeight: 400, fontSize: 12.5 }}> → {target ? `Profile ${target.memberId ?? "-"}` : "(நீக்கப்பட்ட சுயவிவரம்)"}</span>
                       </div>
                       <div style={{ color: "#9C8874", fontSize: 12.5, marginTop: 3 }}>
                         {fromPhone ? `அனுப்பியவர்: ${fromPhone}` : ""}{targetPhone ? ` • பெறுபவர்: ${targetPhone}` : ""} • {fmtDate(it.createdAt)}
