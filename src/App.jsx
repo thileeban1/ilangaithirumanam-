@@ -1794,12 +1794,26 @@ export default function MatrimonyApp() {
           </div>
         )}
 
-        <button style={{ ...styles.card, display: "block", width: "calc(100% - 40px)", textAlign: "left", cursor: "pointer", border: "1px solid #EFDFC0" }} onClick={() => setScreen("myInterests")}>
-          <div style={styles.eyebrow}>விருப்பங்கள்</div>
-          <div style={{ fontWeight: 700, fontSize: 15, color: "#6B1A38" }}>
+        <button
+          style={{
+            display: "block",
+            width: "calc(100% - 40px)",
+            textAlign: "left",
+            cursor: "pointer",
+            border: "1px solid #D988AC",
+            background: "linear-gradient(135deg, #F9D3E4 0%, #EFA9C9 100%)",
+            borderRadius: 16,
+            padding: "18px 20px",
+            margin: "0 18px 16px",
+            boxShadow: "0 6px 16px -6px rgba(216,136,172,0.5)",
+          }}
+          onClick={() => setScreen("myInterests")}
+        >
+          <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11.5, letterSpacing: "0.16em", color: "#8A2C52", textTransform: "uppercase", marginBottom: 8 }}>💗 விருப்பங்கள்</div>
+          <div style={{ fontWeight: 700, fontSize: 15, color: "#5A1030" }}>
             📥 {myInterestsReceived.length} வந்தவை • 📤 {myInterestsSent.length} அனுப்பியவை
           </div>
-          <div style={{ color: "#9C8874", fontSize: 12.5, marginTop: 4 }}>எல்லாவற்றையும் பார்க்க தட்டவும் →</div>
+          <div style={{ color: "#8A2C52", fontSize: 12.5, marginTop: 4 }}>எல்லாவற்றையும் பார்க்க தட்டவும் →</div>
         </button>
 
         <BottomNav active="memberDashboard" onGo={setScreen} />
