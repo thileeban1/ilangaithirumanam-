@@ -574,6 +574,7 @@ export default function MatrimonyApp() {
 
   // browse filters
   const [filters, setFilters] = useState({ gender: "", district: "", maritalStatus: "", religion: "", profession: "", education: "", minAge: "", maxAge: "" });
+  const [advancedSearchOpen, setAdvancedSearchOpen] = useState(false);
 
   // profile detail: unlocked private data for the profile being viewed
   const [viewedIdentity, setViewedIdentity] = useState(null);
@@ -1354,15 +1355,6 @@ export default function MatrimonyApp() {
               <option key={g} value={g}>{g}</option>
             ))}
           </select>
-          <label style={styles.label}>மாவட்டம்</label>
-          <input style={styles.input} value={filters.district} onChange={(e) => setFilters({ ...filters, district: e.target.value })} placeholder="எ.கா. யாழ்ப்பாணம்" />
-          <label style={styles.label}>திருமண நிலை</label>
-          <select style={styles.input} value={filters.maritalStatus} onChange={(e) => setFilters({ ...filters, maritalStatus: e.target.value })}>
-            <option value="">அனைத்தும்</option>
-            {MARITAL_STATUSES.map((m) => (
-              <option key={m} value={m}>{m}</option>
-            ))}
-          </select>
           <label style={styles.label}>மதம்</label>
           <select style={styles.input} value={filters.religion} onChange={(e) => setFilters({ ...filters, religion: e.target.value })}>
             <option value="">அனைத்தும்</option>
@@ -1370,10 +1362,6 @@ export default function MatrimonyApp() {
               <option key={r} value={r}>{r}</option>
             ))}
           </select>
-          <label style={styles.label}>தொழில்</label>
-          <input style={styles.input} value={filters.profession} onChange={(e) => setFilters({ ...filters, profession: e.target.value })} placeholder="எ.கா. ஆசிரியர்" />
-          <label style={styles.label}>கல்வித் தகுதி</label>
-          <input style={styles.input} value={filters.education} onChange={(e) => setFilters({ ...filters, education: e.target.value })} placeholder="எ.கா. பட்டதாரி" />
           <div style={{ display: "flex", gap: 10 }}>
             <div style={{ flex: 1 }}>
               <label style={styles.label}>குறைந்த வயது</label>
@@ -1384,6 +1372,31 @@ export default function MatrimonyApp() {
               <input style={{ ...styles.input, marginBottom: 0 }} type="number" value={filters.maxAge} onChange={(e) => setFilters({ ...filters, maxAge: e.target.value })} />
             </div>
           </div>
+
+          <button
+            style={{ ...styles.linkBtn, marginTop: 16, display: "block" }}
+            onClick={() => setAdvancedSearchOpen(!advancedSearchOpen)}
+          >
+            {advancedSearchOpen ? "▲" : "▼"} மேலும் தேடல் விருப்பங்கள் (Advanced Search)
+          </button>
+
+          {advancedSearchOpen && (
+            <div style={{ marginTop: 12 }}>
+              <label style={styles.label}>மாவட்டம்</label>
+              <input style={styles.input} value={filters.district} onChange={(e) => setFilters({ ...filters, district: e.target.value })} placeholder="எ.கா. யாழ்ப்பாணம்" />
+              <label style={styles.label}>திருமண நிலை</label>
+              <select style={styles.input} value={filters.maritalStatus} onChange={(e) => setFilters({ ...filters, maritalStatus: e.target.value })}>
+                <option value="">அனைத்தும்</option>
+                {MARITAL_STATUSES.map((m) => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+              <label style={styles.label}>தொழில்</label>
+              <input style={styles.input} value={filters.profession} onChange={(e) => setFilters({ ...filters, profession: e.target.value })} placeholder="எ.கா. ஆசிரியர்" />
+              <label style={styles.label}>கல்வித் தகுதி</label>
+              <input style={{ ...styles.input, marginBottom: 0 }} value={filters.education} onChange={(e) => setFilters({ ...filters, education: e.target.value })} placeholder="எ.கா. பட்டதாரி" />
+            </div>
+          )}
         </div>
 
         {filteredProfiles.length === 0 && (
@@ -1683,8 +1696,13 @@ export default function MatrimonyApp() {
 
         <div style={styles.card}>
           <div style={styles.eyebrow}>விரைவு தேடல் (Quick Search)</div>
-          <label style={styles.label}>மாவட்டம்</label>
-          <input style={styles.input} value={filters.district} onChange={(e) => setFilters({ ...filters, district: e.target.value })} placeholder="எ.கா. யாழ்ப்பாணம்" />
+          <label style={styles.label}>பாலினம்</label>
+          <select style={styles.input} value={filters.gender} onChange={(e) => setFilters({ ...filters, gender: e.target.value })}>
+            <option value="">அனைத்தும்</option>
+            {GENDERS.map((g) => (
+              <option key={g} value={g}>{g}</option>
+            ))}
+          </select>
           <label style={styles.label}>மதம்</label>
           <select style={styles.input} value={filters.religion} onChange={(e) => setFilters({ ...filters, religion: e.target.value })}>
             <option value="">அனைத்தும்</option>
@@ -1692,6 +1710,16 @@ export default function MatrimonyApp() {
               <option key={r} value={r}>{r}</option>
             ))}
           </select>
+          <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
+            <div style={{ flex: 1 }}>
+              <label style={styles.label}>குறைந்த வயது</label>
+              <input style={{ ...styles.input, marginBottom: 0 }} type="number" value={filters.minAge} onChange={(e) => setFilters({ ...filters, minAge: e.target.value })} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={styles.label}>அதிக வயது</label>
+              <input style={{ ...styles.input, marginBottom: 0 }} type="number" value={filters.maxAge} onChange={(e) => setFilters({ ...filters, maxAge: e.target.value })} />
+            </div>
+          </div>
           <button style={{ ...styles.btnPrimary, marginBottom: 0 }} onClick={() => setScreen("browse")}>🔍 தேடு</button>
         </div>
 
