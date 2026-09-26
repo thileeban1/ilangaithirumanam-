@@ -1723,6 +1723,56 @@ export default function MatrimonyApp() {
           <button style={{ ...styles.btnPrimary, marginBottom: 0 }} onClick={() => setScreen("browse")}>🔍 தேடு</button>
         </div>
 
+        <button
+          style={{
+            display: "block",
+            width: "calc(100% - 40px)",
+            textAlign: "left",
+            cursor: "pointer",
+            border: "1px solid #D988AC",
+            background: "linear-gradient(135deg, #F9D3E4 0%, #EFA9C9 100%)",
+            borderRadius: 16,
+            padding: "18px 20px",
+            margin: "0 18px 16px",
+            boxShadow: "0 6px 16px -6px rgba(216,136,172,0.5)",
+          }}
+          onClick={() => setScreen("myInterests")}
+        >
+          <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11.5, letterSpacing: "0.16em", color: "#8A2C52", textTransform: "uppercase", marginBottom: 8 }}>💗 விருப்பங்கள்</div>
+          <div style={{ fontWeight: 700, fontSize: 15, color: "#5A1030" }}>
+            📥 {myInterestsReceived.length} வந்தவை • 📤 {myInterestsSent.length} அனுப்பியவை
+          </div>
+          <div style={{ color: "#8A2C52", fontSize: 12.5, marginTop: 4 }}>எல்லாவற்றையும் பார்க்க தட்டவும் →</div>
+        </button>
+
+        {!myProfile && (
+          <div style={styles.card}>
+            <p style={{ color: "#7A6353", fontSize: 14, margin: 0 }}>சுயவிவரம் காணப்படவில்லை.</p>
+          </div>
+        )}
+
+        {myProfile && !editingMyProfile && (
+          <div style={styles.card}>
+            <div style={styles.infoGrid}>
+              <div><div style={styles.infoLabel}>Profile ID</div><div style={styles.infoValue}>{myProfile.memberId || "-"}</div></div>
+              <div><div style={styles.infoLabel}>நிலை</div><div style={styles.infoValue}>{STATUS_LABELS[myProfile.status] || myProfile.status}</div></div>
+              <div><div style={styles.infoLabel}>வயது</div><div style={styles.infoValue}>{age !== null ? age : "-"}</div></div>
+              <div><div style={styles.infoLabel}>மாவட்டம்</div><div style={styles.infoValue}>{myProfile.district || "-"}</div></div>
+            </div>
+            <button style={styles.btnPrimary} onClick={startEditMyProfile}>எனது சுயவிவரத்தை திருத்த (Edit Profile)</button>
+          </div>
+        )}
+
+        {myProfile && editingMyProfile && (
+          <div style={styles.card}>
+            <ProfileFormFields value={myEditDraft} onChange={setMyEditDraft} onAddPhoto={handleAddPhoto} onRemovePhoto={handleRemovePhoto} photoUploading={photoUploading} />
+            <div style={{ display: "flex", gap: 10 }}>
+              <button style={styles.btnPrimary} onClick={saveMyProfile} disabled={photoUploading}>சேமிக்க</button>
+              <button style={styles.btnGhost} onClick={() => setEditingMyProfile(false)}>ரத்து</button>
+            </div>
+          </div>
+        )}
+
         <div style={styles.card}>
           <div style={styles.infoLabel}>தற்போதைய Package</div>
           <div style={styles.infoValue}>{myMember?.package ? (packages[myMember.package]?.label || myMember.package) : "இல்லை (Free)"}</div>
@@ -1765,56 +1815,6 @@ export default function MatrimonyApp() {
             </a>
           )}
         </div>
-
-        {!myProfile && (
-          <div style={styles.card}>
-            <p style={{ color: "#7A6353", fontSize: 14, margin: 0 }}>சுயவிவரம் காணப்படவில்லை.</p>
-          </div>
-        )}
-
-        {myProfile && !editingMyProfile && (
-          <div style={styles.card}>
-            <div style={styles.infoGrid}>
-              <div><div style={styles.infoLabel}>Profile ID</div><div style={styles.infoValue}>{myProfile.memberId || "-"}</div></div>
-              <div><div style={styles.infoLabel}>நிலை</div><div style={styles.infoValue}>{STATUS_LABELS[myProfile.status] || myProfile.status}</div></div>
-              <div><div style={styles.infoLabel}>வயது</div><div style={styles.infoValue}>{age !== null ? age : "-"}</div></div>
-              <div><div style={styles.infoLabel}>மாவட்டம்</div><div style={styles.infoValue}>{myProfile.district || "-"}</div></div>
-            </div>
-            <button style={styles.btnPrimary} onClick={startEditMyProfile}>எனது சுயவிவரத்தை திருத்த (Edit Profile)</button>
-          </div>
-        )}
-
-        {myProfile && editingMyProfile && (
-          <div style={styles.card}>
-            <ProfileFormFields value={myEditDraft} onChange={setMyEditDraft} onAddPhoto={handleAddPhoto} onRemovePhoto={handleRemovePhoto} photoUploading={photoUploading} />
-            <div style={{ display: "flex", gap: 10 }}>
-              <button style={styles.btnPrimary} onClick={saveMyProfile} disabled={photoUploading}>சேமிக்க</button>
-              <button style={styles.btnGhost} onClick={() => setEditingMyProfile(false)}>ரத்து</button>
-            </div>
-          </div>
-        )}
-
-        <button
-          style={{
-            display: "block",
-            width: "calc(100% - 40px)",
-            textAlign: "left",
-            cursor: "pointer",
-            border: "1px solid #D988AC",
-            background: "linear-gradient(135deg, #F9D3E4 0%, #EFA9C9 100%)",
-            borderRadius: 16,
-            padding: "18px 20px",
-            margin: "0 18px 16px",
-            boxShadow: "0 6px 16px -6px rgba(216,136,172,0.5)",
-          }}
-          onClick={() => setScreen("myInterests")}
-        >
-          <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11.5, letterSpacing: "0.16em", color: "#8A2C52", textTransform: "uppercase", marginBottom: 8 }}>💗 விருப்பங்கள்</div>
-          <div style={{ fontWeight: 700, fontSize: 15, color: "#5A1030" }}>
-            📥 {myInterestsReceived.length} வந்தவை • 📤 {myInterestsSent.length} அனுப்பியவை
-          </div>
-          <div style={{ color: "#8A2C52", fontSize: 12.5, marginTop: 4 }}>எல்லாவற்றையும் பார்க்க தட்டவும் →</div>
-        </button>
 
         <BottomNav active="memberDashboard" onGo={setScreen} />
       </div>
