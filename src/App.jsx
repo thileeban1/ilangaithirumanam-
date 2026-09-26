@@ -340,35 +340,50 @@ function ProfileFormFields({ value, onChange, onAddPhoto, onRemovePhoto, photoUp
       <label style={styles.label}>பிறந்த தேதி *</label>
       <input style={styles.input} type="date" max={todayStr()} value={value.dob} onChange={(e) => onChange({ ...value, dob: e.target.value })} />
 
-      <label style={styles.label}>பிறந்த நேரம் (விருப்பம்)</label>
-      <input style={styles.input} type="time" value={value.birthTime} onChange={(e) => onChange({ ...value, birthTime: e.target.value })} />
-
-      <label style={styles.label}>ராசி (விருப்பம்)</label>
-      <select style={styles.input} value={value.rasi} onChange={(e) => onChange({ ...value, rasi: e.target.value })}>
-        <option value="">தேர்ந்தெடுக்கவும்</option>
-        {RASIS.map((r) => (
-          <option key={r} value={r}>{r}</option>
-        ))}
-      </select>
-
-      <label style={styles.label}>நட்சத்திரம் (விருப்பம்)</label>
-      <select style={styles.input} value={value.natchathiram} onChange={(e) => onChange({ ...value, natchathiram: e.target.value })}>
-        <option value="">தேர்ந்தெடுக்கவும்</option>
-        {NATCHATHIRAMS.map((n) => (
-          <option key={n} value={n}>{n}</option>
-        ))}
-      </select>
-
-      <label style={styles.label}>உயரம் (எ.கா. 5'6")</label>
-      <input style={styles.input} value={value.height} onChange={(e) => onChange({ ...value, height: e.target.value })} placeholder="5'6&quot;" />
-
       <label style={styles.label}>மதம்</label>
-      <select style={styles.input} value={value.religion} onChange={(e) => onChange({ ...value, religion: e.target.value })}>
+      <select
+        style={styles.input}
+        value={value.religion}
+        onChange={(e) => {
+          const religion = e.target.value;
+          onChange(
+            religion === "இந்து"
+              ? { ...value, religion }
+              : { ...value, religion, birthTime: "", rasi: "", natchathiram: "" }
+          );
+        }}
+      >
         <option value="">தேர்ந்தெடுக்கவும்</option>
         {RELIGIONS.map((r) => (
           <option key={r} value={r}>{r}</option>
         ))}
       </select>
+
+      {value.religion === "இந்து" && (
+        <>
+          <label style={styles.label}>பிறந்த நேரம் (விருப்பம்)</label>
+          <input style={styles.input} type="time" value={value.birthTime} onChange={(e) => onChange({ ...value, birthTime: e.target.value })} />
+
+          <label style={styles.label}>ராசி (விருப்பம்)</label>
+          <select style={styles.input} value={value.rasi} onChange={(e) => onChange({ ...value, rasi: e.target.value })}>
+            <option value="">தேர்ந்தெடுக்கவும்</option>
+            {RASIS.map((r) => (
+              <option key={r} value={r}>{r}</option>
+            ))}
+          </select>
+
+          <label style={styles.label}>நட்சத்திரம் (விருப்பம்)</label>
+          <select style={styles.input} value={value.natchathiram} onChange={(e) => onChange({ ...value, natchathiram: e.target.value })}>
+            <option value="">தேர்ந்தெடுக்கவும்</option>
+            {NATCHATHIRAMS.map((n) => (
+              <option key={n} value={n}>{n}</option>
+            ))}
+          </select>
+        </>
+      )}
+
+      <label style={styles.label}>உயரம் (எ.கா. 5'6")</label>
+      <input style={styles.input} value={value.height} onChange={(e) => onChange({ ...value, height: e.target.value })} placeholder="5'6&quot;" />
 
       <label style={styles.label}>ஜாதி (விருப்பம்)</label>
       <input style={styles.input} value={value.caste} onChange={(e) => onChange({ ...value, caste: e.target.value })} />
@@ -1155,7 +1170,7 @@ export default function MatrimonyApp() {
         <div style={styles.section}>
           <div style={{ ...styles.card, margin: 0 }}>
             <p style={{ color: "#9FB0CE", fontSize: 13.5, lineHeight: 1.6, margin: 0 }}>
-              தற்போது <strong style={{ color: "#F6F8FC" }}>{approvedProfiles.length}</strong> ஏற்றுக்கொள்ளப்பட்ட சுயவிவரங்கள் உள்ளன. நீங்கள் பதிவு செய்யும் சுயவிவரம் நிர்வாகியால் பரிசீலிக்கப்பட்ட பின் மட்டுமே பொதுவில் காணப்படும்.
+              நீங்கள் பதிவு செய்யும் சுயவிவரம் நிர்வாகியால் பரிசீலிக்கப்பட்ட பின் மட்டுமே பொதுவில் காணப்படும்.
             </p>
           </div>
         </div>
