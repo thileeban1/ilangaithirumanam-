@@ -270,7 +270,18 @@ function Header({ siteName, onAdminClick }) {
     <div style={styles.header}>
       <div style={styles.brandBox}>{siteName}</div>
       <div style={{ display: "flex", gap: 8 }}>
-        <button style={styles.pill} onClick={onAdminClick}>நிர்வாகி</button>
+        {/* Deliberately unlabeled: this is the admin login entry, but naming
+            it "நிர்வாகி" invited casual visitors to tap it out of curiosity
+            and try logging in. A plain icon with no text doesn't advertise
+            what it does, while an admin who already knows it's there can
+            still find and use it. */}
+        <button
+          style={{ background: "none", border: "none", color: "#C9AE8C", fontSize: 17, cursor: "pointer", padding: "7px 10px" }}
+          onClick={onAdminClick}
+          aria-label="Site settings"
+        >
+          ⚙
+        </button>
       </div>
     </div>
   );
