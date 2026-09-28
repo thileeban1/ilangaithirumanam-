@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Class Portal LMS
  * Description: தரம் / பாடம் / Zoom Link / Recordings / PDF குறிப்புகளை நிர்வகிக்கவும், மாணவர்கள் ஒரு Access Code மூலம் தங்களுக்கான பாடங்களை மட்டும் பார்க்கவும் உதவும் எளிய LMS.
- * Version: 1.0.8
+ * Version: 1.0.9
  * Author: Class Portal
  * Text Domain: class-portal-lms
  */
@@ -11,7 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'CPLMS_VERSION', '1.0.8' );
+define( 'CPLMS_VERSION', '1.0.9' );
 define( 'CPLMS_MAX_RECORDING_VIEWS', 3 );
 define( 'CPLMS_PATH', plugin_dir_path( __FILE__ ) );
 define( 'CPLMS_URL', plugin_dir_url( __FILE__ ) );
@@ -364,24 +364,35 @@ function cplms_hide_page_title() {
 add_action( 'wp_head', 'cplms_hide_page_title', 100 );
 
 /**
- * Make the theme's site title/logo in the header non-clickable. Since the
- * Class Portal page is the homepage, an accidental tap on it just reloads
- * the page and resets a student back to the access-code screen — this
- * keeps the text/logo visible but stops it from navigating away.
+ * The host's server-side page cache is keyed by exact URL, and the bare
+ * homepage URL (no path) sometimes serves a stale cached snapshot even
+ * after the real page has changed (this took days to clear at times).
+ * Rather than fight that cache, force any link that points to the bare
+ * site root — the theme's site title/logo included — to always add a
+ * unique query string on click, so it can never hit a cached copy and
+ * always loads the current page fresh from WordPress.
  */
-function cplms_disable_site_title_link() {
+function cplms_bust_homepage_cache_links() {
+	$home = esc_js( trailingslashit( home_url() ) );
 	?>
 	<script>
-	document.addEventListener('DOMContentLoaded', function () {
-		document.querySelectorAll('.wp-block-site-title a, .site-title a, .wp-block-site-logo a').forEach(function (a) {
-			a.removeAttribute('href');
-			a.style.cursor = 'default';
+	(function () {
+		var home = '<?php echo $home; ?>';
+		var homeNoSlash = home.slice(0, -1);
+		document.addEventListener('click', function (e) {
+			var a = e.target.closest('a');
+			if (!a) { return; }
+			var href = a.getAttribute('href') || '';
+			if (href === home || href === homeNoSlash || href === '/' || href === window.location.origin + '/') {
+				e.preventDefault();
+				window.location.href = home + '?_r=' + Date.now();
+			}
 		});
-	});
+	})();
 	</script>
 	<?php
 }
-add_action( 'wp_footer', 'cplms_disable_site_title_link', 100 );
+add_action( 'wp_footer', 'cplms_bust_homepage_cache_links', 100 );
 
 /**
  * Floating WhatsApp button shown on every front-end page (bottom-right),
