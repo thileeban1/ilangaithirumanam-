@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Class Portal LMS
  * Description: தரம் / பாடம் / Zoom Link / Recordings / PDF குறிப்புகளை நிர்வகிக்கவும், மாணவர்கள் ஒரு Access Code மூலம் தங்களுக்கான பாடங்களை மட்டும் பார்க்கவும் உதவும் எளிய LMS.
- * Version: 1.0.9
+ * Version: 1.1.0
  * Author: Class Portal
  * Text Domain: class-portal-lms
  */
@@ -11,7 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'CPLMS_VERSION', '1.0.9' );
+define( 'CPLMS_VERSION', '1.1.0' );
 define( 'CPLMS_MAX_RECORDING_VIEWS', 3 );
 define( 'CPLMS_PATH', plugin_dir_path( __FILE__ ) );
 define( 'CPLMS_URL', plugin_dir_url( __FILE__ ) );
@@ -362,6 +362,20 @@ function cplms_hide_page_title() {
 	}
 }
 add_action( 'wp_head', 'cplms_hide_page_title', 100 );
+
+/**
+ * The theme's default footer (site title repeated again, a demo nav menu
+ * with irrelevant links like Blog/Events/Shop/FAQs/Authors/Themes, and the
+ * "Twenty Twenty-Five" credit) is leftover starter content — not part of
+ * the Class Portal LMS and a repeated source of confusing accidental
+ * navigation. Hide it site-wide; our own admin-login link and WhatsApp
+ * button are printed via wp_footer, outside this <footer> element, so
+ * they stay visible.
+ */
+function cplms_hide_theme_footer() {
+	echo '<style id="cplms-hide-footer">footer{display:none!important}</style>';
+}
+add_action( 'wp_head', 'cplms_hide_theme_footer', 100 );
 
 /**
  * The host's server-side page cache is keyed by exact URL, and the bare
