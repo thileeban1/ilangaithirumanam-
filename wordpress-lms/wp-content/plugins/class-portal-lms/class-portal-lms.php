@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Class Portal LMS
  * Description: ஆண்டு / மாதம் / பாடம் / தேதி வாரியாக வகுப்புகளை நிர்வகிக்கவும், மாணவர்கள் ஒரு Access Code மூலம் தங்களுக்கான வகுப்புகளை மட்டும் பார்க்கவும் உதவும் LMS.
- * Version: 1.2.0
+ * Version: 1.2.1
  * Author: Class Portal
  * Text Domain: class-portal-lms
  */
@@ -11,7 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'CPLMS_VERSION', '1.2.0' );
+define( 'CPLMS_VERSION', '1.2.1' );
 define( 'CPLMS_MAX_RECORDING_VIEWS', 3 );
 define( 'CPLMS_PATH', plugin_dir_path( __FILE__ ) );
 define( 'CPLMS_URL', plugin_dir_url( __FILE__ ) );
@@ -597,6 +597,14 @@ add_action( 'wp_footer', 'cplms_print_whatsapp_button', 100 );
  * 5. Data helpers
  * ------------------------------------------------------------------- */
 
+function cplms_format_date( $ymd ) {
+	if ( ! $ymd ) {
+		return '';
+	}
+	$ts = strtotime( $ymd );
+	return $ts ? date_i18n( 'd/m/Y', $ts ) : $ymd;
+}
+
 function cplms_parse_lines( $raw, $auto_label_prefix = '' ) {
 	$items = array();
 	foreach ( preg_split( "/\r\n|\r|\n/", (string) $raw ) as $line ) {
@@ -830,17 +838,30 @@ function cplms_view_home( $student, $code, $all_classes, $subjects, $months ) {
 		}
 	}
 
-	$done_count = 0;
-	$total_count = 0;
+	// Progress for the most recent year/month that has any class data.
+	$latest_year  = 0;
+	$latest_month = 0;
+	if ( ! empty( $all_classes ) ) {
+		$latest_year  = (int) get_post_meta( $all_classes[0]->ID, '_cp_year', true );
+		$latest_month = (int) get_post_meta( $all_classes[0]->ID, '_cp_month', true );
+	}
+	$subject_progress = array();
 	foreach ( $all_classes as $c ) {
-		$status = cplms_class_progress_status( $student->ID, $c );
-		if ( '' === $status ) {
+		if ( (int) get_post_meta( $c->ID, '_cp_year', true ) !== $latest_year || (int) get_post_meta( $c->ID, '_cp_month', true ) !== $latest_month ) {
 			continue;
 		}
-		$total_count++;
-		if ( 'done' === $status ) {
-			$done_count++;
+		$sid = (int) get_post_meta( $c->ID, '_cp_subject_id', true );
+		if ( ! isset( $subject_progress[ $sid ] ) ) {
+			$subject_progress[ $sid ] = array( 'done' => 0, 'total' => 0, 'materials' => 0 );
 		}
+		$status = cplms_class_progress_status( $student->ID, $c );
+		if ( '' !== $status ) {
+			$subject_progress[ $sid ]['total']++;
+			if ( 'done' === $status ) {
+				$subject_progress[ $sid ]['done']++;
+			}
+		}
+		$subject_progress[ $sid ]['materials'] += count( cplms_parse_lines( get_post_meta( $c->ID, '_cp_pdfs', true ) ) ) + count( cplms_parse_lines( get_post_meta( $c->ID, '_cp_worksheets', true ) ) );
 	}
 
 	echo '<div class="cplms-dashboard">';
@@ -856,7 +877,9 @@ function cplms_view_home( $student, $code, $all_classes, $subjects, $months ) {
 	echo '<div class="cplms-card"><strong>📚 எனது பாடங்கள்</strong><div class="cplms-chip-row">';
 	foreach ( $subjects as $s ) {
 		$icon = get_post_meta( $s->ID, '_cp_icon', true );
-		echo '<span class="cplms-chip">' . esc_html( $icon ? $icon : '📘' ) . ' ' . esc_html( $s->post_title ) . '</span>';
+		$sy   = $latest_year ? $latest_year : (int) gmdate( 'Y' );
+		$sm   = $latest_month ? $latest_month : (int) gmdate( 'n' );
+		echo '<a class="cplms-chip" href="' . esc_url( cplms_nav_url( $code, array( 'cp_v' => 'classes', 'cp_y' => $sy, 'cp_m' => $sm, 'cp_s' => $s->ID ) ) ) . '">' . esc_html( $icon ? $icon : '📘' ) . ' ' . esc_html( $s->post_title ) . '</a>';
 	}
 	if ( empty( $subjects ) ) {
 		echo '<span class="cplms-chip">இதுவரை பாடங்கள் இல்லை</span>';
@@ -867,14 +890,26 @@ function cplms_view_home( $student, $code, $all_classes, $subjects, $months ) {
 	if ( $next_class ) {
 		$subject_id = get_post_meta( $next_class->ID, '_cp_subject_id', true );
 		$icon       = get_post_meta( $subject_id, '_cp_icon', true );
-		echo '<p>' . esc_html( $icon ? $icon : '📘' ) . ' ' . esc_html( get_the_title( $subject_id ) ) . ' — ' . esc_html( get_post_meta( $next_class->ID, '_cp_class_date', true ) ) . '</p>';
+		echo '<p>' . esc_html( $icon ? $icon : '📘' ) . ' ' . esc_html( get_the_title( $subject_id ) ) . ' — ' . esc_html( cplms_format_date( get_post_meta( $next_class->ID, '_cp_class_date', true ) ) ) . '</p>';
 	} else {
 		echo '<p>அடுத்த வகுப்பு எதுவும் திட்டமிடப்படவில்லை.</p>';
 	}
 	echo '</div>';
 
-	if ( $total_count > 0 ) {
-		echo '<div class="cplms-card"><strong>📊 Progress</strong><p>' . (int) $done_count . ' / ' . (int) $total_count . ' recordings முடிக்கப்பட்டது</p></div>';
+	if ( ! empty( $subject_progress ) ) {
+		$month_name = cplms_month_names();
+		echo '<div class="cplms-card"><strong>📊 Progress — ' . esc_html( ( $month_name[ $latest_month ] ?? '' ) . ' ' . $latest_year ) . '</strong>';
+		foreach ( $subject_progress as $sid => $p ) {
+			echo '<p>' . esc_html( get_the_title( $sid ) ) . ' — ';
+			if ( $p['total'] > 0 ) {
+				echo '🎥 ' . (int) $p['done'] . '/' . (int) $p['total'] . ' Recordings முடிக்கப்பட்டது';
+			}
+			if ( $p['materials'] > 0 ) {
+				echo ( $p['total'] > 0 ? ', ' : '' ) . '📄 ' . (int) $p['materials'] . ' Materials';
+			}
+			echo '</p>';
+		}
+		echo '</div>';
 	}
 
 	echo '<div class="cplms-card"><strong>📄 சமீபத்திய Materials</strong><ul class="cplms-recent-list">';
@@ -898,7 +933,7 @@ function cplms_view_home( $student, $code, $all_classes, $subjects, $months ) {
 }
 
 function cplms_view_classes( $student, $code, $all_classes, $subjects, $months ) {
-	$year_param    = isset( $_GET['cp_y'] ) ? absint( $_GET['cp_y'] ) : 0;
+	$year_param    = isset( $_GET['cp_y'] ) ? absint( $_GET['cp_y'] ) : (int) gmdate( 'Y' );
 	$month_param   = isset( $_GET['cp_m'] ) ? absint( $_GET['cp_m'] ) : 0;
 	$subject_param = isset( $_GET['cp_s'] ) ? absint( $_GET['cp_s'] ) : 0;
 	$class_param   = isset( $_GET['cp_c'] ) ? absint( $_GET['cp_c'] ) : 0;
@@ -911,44 +946,19 @@ function cplms_view_classes( $student, $code, $all_classes, $subjects, $months )
 		return;
 	}
 
-	if ( $subject_param && $year_param && $month_param ) {
+	if ( $subject_param && $month_param ) {
 		cplms_view_date_list( $student, $code, $all_classes, $year_param, $month_param, $subject_param );
 		echo '</div>';
 		return;
 	}
 
-	if ( $year_param && $month_param ) {
+	if ( $month_param ) {
 		cplms_view_subject_list( $code, $all_classes, $subjects, $year_param, $month_param );
 		echo '</div>';
 		return;
 	}
 
-	if ( $year_param ) {
-		cplms_view_month_list( $code, $all_classes, $subjects, $year_param, $months );
-		echo '</div>';
-		return;
-	}
-
-	cplms_view_year_list( $code, $all_classes );
-	echo '</div>';
-}
-
-function cplms_view_year_list( $code, $all_classes ) {
-	$years = array();
-	foreach ( $all_classes as $c ) {
-		$y = (int) get_post_meta( $c->ID, '_cp_year', true );
-		$years[ $y ] = true;
-	}
-	krsort( $years );
-	echo '<h3>📚 வகுப்புகள் — ஆண்டு தேர்ந்தெடுக்கவும்</h3>';
-	if ( empty( $years ) ) {
-		echo '<p>இதுவரை வகுப்புகள் எதுவும் சேர்க்கப்படவில்லை.</p>';
-		return;
-	}
-	echo '<div class="cplms-grid-list">';
-	foreach ( array_keys( $years ) as $y ) {
-		echo '<a class="cplms-tile" href="' . esc_url( cplms_nav_url( $code, array( 'cp_v' => 'classes', 'cp_y' => $y ) ) ) . '">' . esc_html( $y ) . '</a>';
-	}
+	cplms_view_month_list( $code, $all_classes, $subjects, $year_param, $months );
 	echo '</div>';
 }
 
@@ -959,14 +969,15 @@ function cplms_view_month_list( $code, $all_classes, $subjects, $year, $months )
 			$present[ (int) get_post_meta( $c->ID, '_cp_month', true ) ] = true;
 		}
 	}
-	echo '<p><a href="' . esc_url( cplms_nav_url( $code, array( 'cp_v' => 'classes' ) ) ) . '">← ஆண்டுகள்</a></p>';
-	echo '<h3>' . esc_html( $year ) . ' — மாதம் தேர்ந்தெடுக்கவும்</h3>';
+	echo '<div class="cplms-calendar-nav">';
+	echo '<a href="' . esc_url( cplms_nav_url( $code, array( 'cp_v' => 'classes', 'cp_y' => $year - 1 ) ) ) . '">←</a>';
+	echo '<strong>📚 வகுப்புகள் — ' . esc_html( $year ) . '</strong>';
+	echo '<a href="' . esc_url( cplms_nav_url( $code, array( 'cp_v' => 'classes', 'cp_y' => $year + 1 ) ) ) . '">→</a>';
+	echo '</div>';
 	echo '<div class="cplms-grid-list">';
 	foreach ( $months as $num => $name ) {
-		if ( empty( $present[ $num ] ) ) {
-			continue;
-		}
-		echo '<a class="cplms-tile" href="' . esc_url( cplms_nav_url( $code, array( 'cp_v' => 'classes', 'cp_y' => $year, 'cp_m' => $num ) ) ) . '">' . esc_html( $name ) . '</a>';
+		$has = ! empty( $present[ $num ] );
+		echo '<a class="cplms-tile' . ( $has ? '' : ' cplms-tile-empty' ) . '" href="' . esc_url( cplms_nav_url( $code, array( 'cp_v' => 'classes', 'cp_y' => $year, 'cp_m' => $num ) ) ) . '">📅 ' . esc_html( $name ) . '</a>';
 	}
 	echo '</div>';
 	if ( empty( $present ) ) {
@@ -1027,7 +1038,7 @@ function cplms_view_date_list( $student, $code, $all_classes, $year, $month, $su
 		$date  = get_post_meta( $c->ID, '_cp_class_date', true );
 		$no    = get_post_meta( $c->ID, '_cp_class_number', true );
 		echo '<li><a href="' . esc_url( cplms_nav_url( $code, array( 'cp_v' => 'classes', 'cp_y' => $year, 'cp_m' => $month, 'cp_s' => $subject_id, 'cp_c' => $c->ID ) ) ) . '">';
-		echo '📅 ' . esc_html( $date ) . ' — வகுப்பு ' . esc_html( $no ) . ' — ' . esc_html( get_the_title( $c->ID ) ) . ' ' . esc_html( $badge );
+		echo '📅 ' . esc_html( cplms_format_date( $date ) ) . ' — வகுப்பு ' . esc_html( $no ) . ' — ' . esc_html( get_the_title( $c->ID ) ) . ' ' . esc_html( $badge );
 		echo '</a></li>';
 	}
 	if ( empty( $list ) ) {
@@ -1064,7 +1075,7 @@ function cplms_view_class_detail( $student, $code, $class_id, $year, $month, $su
 	echo '<p><a href="' . esc_url( cplms_nav_url( $code, array( 'cp_v' => 'classes', 'cp_y' => $year ? $year : get_post_meta( $class_id, '_cp_year', true ), 'cp_m' => $month ? $month : get_post_meta( $class_id, '_cp_month', true ), 'cp_s' => $sid ) ) ) . '">← தேதிகள்</a></p>';
 	echo '<div class="cplms-subject-card">';
 	echo '<h3>' . esc_html( $icon ? $icon : '📘' ) . ' ' . esc_html( get_the_title( $sid ) ) . '</h3>';
-	echo '<p>📅 ' . esc_html( $date ) . ' — வகுப்பு ' . esc_html( $no ) . ' — <strong>' . esc_html( get_the_title( $class_id ) ) . '</strong></p>';
+	echo '<p>📅 ' . esc_html( cplms_format_date( $date ) ) . ' — வகுப்பு ' . esc_html( $no ) . ' — <strong>' . esc_html( get_the_title( $class_id ) ) . '</strong></p>';
 
 	if ( ! empty( $recordings ) ) {
 		echo '<div class="cplms-list"><strong>🎥 Recording</strong>' . ( $duration ? ' <span class="cplms-views-left">(' . esc_html( $duration ) . ')</span>' : '' ) . '<ul>';
@@ -1157,7 +1168,7 @@ function cplms_view_calendar( $student, $code, $all_classes ) {
 	echo '</div>';
 
 	if ( $day && ! empty( $by_date[ $day ] ) ) {
-		echo '<div class="cplms-list"><strong>📅 ' . esc_html( $day ) . '</strong><ul>';
+		echo '<div class="cplms-list"><strong>📅 ' . esc_html( cplms_format_date( $day ) ) . '</strong><ul>';
 		foreach ( $by_date[ $day ] as $c ) {
 			$sid  = (int) get_post_meta( $c->ID, '_cp_subject_id', true );
 			$icon = get_post_meta( $sid, '_cp_icon', true );
@@ -1167,23 +1178,88 @@ function cplms_view_calendar( $student, $code, $all_classes ) {
 	}
 }
 
+function cplms_class_has_materials( $class_id ) {
+	return ! empty( cplms_parse_lines( get_post_meta( $class_id, '_cp_pdfs', true ) ) )
+		|| ! empty( cplms_parse_lines( get_post_meta( $class_id, '_cp_worksheets', true ) ) );
+}
+
 function cplms_view_materials( $student, $code, $all_classes ) {
+	$year    = isset( $_GET['cp_y'] ) ? absint( $_GET['cp_y'] ) : (int) gmdate( 'Y' );
+	$month   = isset( $_GET['cp_m'] ) ? absint( $_GET['cp_m'] ) : 0;
+	$subject = isset( $_GET['cp_s'] ) ? absint( $_GET['cp_s'] ) : 0;
+	$months  = cplms_month_names();
+
 	echo '<h3>📄 Materials</h3>';
-	echo '<ul class="cplms-recent-list">';
-	$count = 0;
+
+	if ( ! $month ) {
+		$present = array();
+		foreach ( $all_classes as $c ) {
+			if ( (int) get_post_meta( $c->ID, '_cp_year', true ) === $year && cplms_class_has_materials( $c->ID ) ) {
+				$present[ (int) get_post_meta( $c->ID, '_cp_month', true ) ] = true;
+			}
+		}
+		echo '<div class="cplms-calendar-nav">';
+		echo '<a href="' . esc_url( cplms_nav_url( $code, array( 'cp_v' => 'materials', 'cp_y' => $year - 1 ) ) ) . '">←</a>';
+		echo '<strong>' . esc_html( $year ) . '</strong>';
+		echo '<a href="' . esc_url( cplms_nav_url( $code, array( 'cp_v' => 'materials', 'cp_y' => $year + 1 ) ) ) . '">→</a>';
+		echo '</div><div class="cplms-grid-list">';
+		foreach ( $months as $num => $name ) {
+			if ( empty( $present[ $num ] ) ) {
+				continue;
+			}
+			echo '<a class="cplms-tile" href="' . esc_url( cplms_nav_url( $code, array( 'cp_v' => 'materials', 'cp_y' => $year, 'cp_m' => $num ) ) ) . '">📅 ' . esc_html( $name ) . '</a>';
+		}
+		echo '</div>';
+		if ( empty( $present ) ) {
+			echo '<p>இதுவரை Materials இல்லை.</p>';
+		}
+		return;
+	}
+
+	if ( ! $subject ) {
+		$counts = array();
+		foreach ( $all_classes as $c ) {
+			if ( (int) get_post_meta( $c->ID, '_cp_year', true ) === $year && (int) get_post_meta( $c->ID, '_cp_month', true ) === $month && cplms_class_has_materials( $c->ID ) ) {
+				$sid = (int) get_post_meta( $c->ID, '_cp_subject_id', true );
+				$counts[ $sid ] = ( $counts[ $sid ] ?? 0 ) + 1;
+			}
+		}
+		echo '<p><a href="' . esc_url( cplms_nav_url( $code, array( 'cp_v' => 'materials', 'cp_y' => $year ) ) ) . '">← மாதங்கள்</a></p>';
+		echo '<h4>' . esc_html( $months[ $month ] ?? '' ) . ' ' . esc_html( $year ) . '</h4><div class="cplms-subjects">';
+		foreach ( $counts as $sid => $cnt ) {
+			$icon = get_post_meta( $sid, '_cp_icon', true );
+			echo '<a class="cplms-subject-card cplms-subject-link" href="' . esc_url( cplms_nav_url( $code, array( 'cp_v' => 'materials', 'cp_y' => $year, 'cp_m' => $month, 'cp_s' => $sid ) ) ) . '">';
+			echo '<h3>' . esc_html( $icon ? $icon : '📘' ) . ' ' . esc_html( get_the_title( $sid ) ) . '</h3><p>' . (int) $cnt . ' தேதிகளில் Materials</p></a>';
+		}
+		echo '</div>';
+		if ( empty( $counts ) ) {
+			echo '<p>இந்த மாதத்தில் Materials இல்லை.</p>';
+		}
+		return;
+	}
+
+	$icon = get_post_meta( $subject, '_cp_icon', true );
+	echo '<p><a href="' . esc_url( cplms_nav_url( $code, array( 'cp_v' => 'materials', 'cp_y' => $year, 'cp_m' => $month ) ) ) . '">← பாடங்கள்</a></p>';
+	echo '<h4>' . esc_html( $icon ? $icon : '📘' ) . ' ' . esc_html( get_the_title( $subject ) ) . ' — ' . esc_html( $months[ $month ] ?? '' ) . ' ' . esc_html( $year ) . '</h4>';
 	foreach ( $all_classes as $c ) {
-		$sid  = (int) get_post_meta( $c->ID, '_cp_subject_id', true );
+		if ( (int) get_post_meta( $c->ID, '_cp_year', true ) !== $year || (int) get_post_meta( $c->ID, '_cp_month', true ) !== $month || (int) get_post_meta( $c->ID, '_cp_subject_id', true ) !== $subject ) {
+			continue;
+		}
 		$pdfs = cplms_parse_lines( get_post_meta( $c->ID, '_cp_pdfs', true ), 'PDF' );
 		$wks  = cplms_parse_lines( get_post_meta( $c->ID, '_cp_worksheets', true ), 'Worksheet' );
-		foreach ( array_merge( $pdfs, $wks ) as $item ) {
-			echo '<li><a href="' . esc_url( $item['url'] ) . '" target="_blank" rel="noopener">📄 ' . esc_html( get_the_title( $sid ) . ' — ' . $item['label'] ) . '</a></li>';
-			$count++;
+		if ( empty( $pdfs ) && empty( $wks ) ) {
+			continue;
 		}
+		$date = cplms_format_date( get_post_meta( $c->ID, '_cp_class_date', true ) );
+		echo '<div class="cplms-list"><strong>📅 ' . esc_html( $date ) . ' — ' . esc_html( get_the_title( $c->ID ) ) . '</strong><ul>';
+		foreach ( $pdfs as $p ) {
+			echo '<li><a href="' . esc_url( $p['url'] ) . '" target="_blank" rel="noopener">📄 ' . esc_html( $p['label'] ) . '</a></li>';
+		}
+		foreach ( $wks as $w ) {
+			echo '<li><a href="' . esc_url( $w['url'] ) . '" target="_blank" rel="noopener">📝 ' . esc_html( $w['label'] ) . '</a></li>';
+		}
+		echo '</ul></div>';
 	}
-	if ( 0 === $count ) {
-		echo '<li>இதுவரை Materials இல்லை.</li>';
-	}
-	echo '</ul>';
 }
 
 function cplms_view_profile( $student, $subjects ) {
