@@ -109,6 +109,26 @@ Firestore-ல்:
 
 இவை realtime-ஆக sync ஆகும்.
 
+## WordPress பதிப்பு (Madhi Matrimony plugin)
+
+இதே website-ஐ WordPress-ல் இயக்க `wordpress/madhi-matrimony/` என்ற plugin உள்ளது — Firebase தேவையில்லை, எல்லா தரவும் WordPress-ன் சொந்த MySQL database-ல் சேமிக்கப்படும். React பதிப்பில் உள்ள அனைத்து அம்சங்களும் இதில் உள்ளன: சுயவிவர பதிவு (3 புகைப்படங்கள் வரை, 5-இலக்க Profile ID), தொடர்பு எண் + கடவுச்சொல் login, Dashboard, தேடல் (Quick + Advanced), Photo/Phone unlock credits, Packages, விருப்பங்கள் (interests), WhatsApp பட்டன்கள், watermark உள்ள புகைப்படங்கள்.
+
+**நிறுவுதல்:**
+
+1. Plugin zip பெற: GitHub-ல் **Actions -> "Build WordPress plugin zip"** -> கடைசி run -> `madhi-matrimony-wordpress-plugin` artifact-ஐ download செய்து unzip செய்தால் `madhi-matrimony.zip` கிடைக்கும். (அல்லது `wordpress/madhi-matrimony` folder-ஐ நீங்களே zip செய்யலாம்.)
+2. WordPress admin -> **Plugins -> Add New -> Upload Plugin** -> அந்த zip -> **Install** -> **Activate**.
+3. Activate செய்தவுடன் `[madhi_matrimony]` shortcode உள்ள "திருமண மையம்" page தானாக உருவாகும். அதையே முகப்புப் பக்கமாக வைக்க: **Settings -> Reading -> A static page -> Homepage: திருமண மையம்**.
+4. **Settings -> Permalinks -> Post name** தேர்ந்தெடுக்கவும் (பரிந்துரை).
+5. wp-admin -> **Matrimony -> அமைப்புகள் / Packages**: தளத்தின் பெயர், tagline, WhatsApp எண், package விலைகள்.
+
+**நிர்வாகி:** WordPress administrator கணக்குகளே நிர்வாகிகள். wp-admin -> **Matrimony** menu-ல் பரிசீலனையில் / ஏற்கப்பட்டவை / நிராகரிக்கப்பட்டவை tabs, திருத்து + Package கொடு, விருப்பங்கள் (மேட்ச்கள் முதலில்) எல்லாம் உள்ளன. உறுப்பினர் கடவுச்சொல் மறந்தால் **Users** -> அந்த `m94…` user -> புதிய கடவுச்சொல் அமைக்கலாம்.
+
+**உறுப்பினர்கள்:** பதிவு செய்யும்போது தானாக ஒரு WordPress user (`mm_member` role, username = `m` + தொடர்பு எண்ணின் இலக்கங்கள்) உருவாகும். அவர்களால் wp-admin-க்குள் நுழைய முடியாது. `0771234567`, `+94 77 123 4567` போன்ற வெவ்வேறு format-கள் ஒரே கணக்காகவே கருதப்படும்.
+
+**தனியுரிமை:** பெயர்/புகைப்படம், தொடர்பு எண்/மின்னஞ்சல் — PHP server-லேயே அனுமதி சரிபார்த்த பின் மட்டுமே அனுப்பப்படும் (நிர்வாகி, சொந்தக்காரர், அல்லது credit செலவழித்து unlock செய்தவர் மட்டும்). புகைப்படங்கள் Media Library-ல் அல்ல, `wp-content/uploads/mm-private/`-ல் random பெயர்களுடன் சேமிக்கப்பட்டு, அனுமதி சரிபார்த்தே காட்டப்படும். Apache-ல் `.htaccess` நேரடி அணுகலைத் தடுக்கும்; nginx என்றால் `location ^~ /wp-content/uploads/mm-private/ { deny all; }` சேர்க்கவும்.
+
+**React பதிப்பிலிருந்து வேறுபாடுகள்:** Package காலாவதியானால் மீதமுள்ள credits பயன்படுத்த முடியாது; ஒரே சுயவிவரத்திற்கு ஒருமுறை மட்டுமே விருப்பம் அனுப்ப முடியும்; நிர்வாகி ஒரு சுயவிவரத்தை நீக்கும்போது அந்த உறுப்பினரின் login கணக்கும் நீக்கப்படும் (அதே எண்ணில் மீண்டும் பதிவு செய்யலாம்). Firebase-ல் உள்ள பழைய தரவு தானாக WordPress-க்கு மாற்றப்படாது.
+
 ## பாதுகாப்பு
 
 - யாரும் புதிய சுயவிவரத்தை (status: pending) பதிவு செய்யலாம், ஆனால் `approved` எனக் குறிக்கப்பட்ட சுயவிவரங்களின் "meters" மட்டுமே மற்ற உறுப்பினர்களுக்கு தெரியும் — பெயர்/புகைப்படம்/தொடர்பு எண் அந்தந்த credit unlock செய்தவர்களுக்கு மட்டுமே, `firestore.rules`-ல் நேரடியாக enforce செய்யப்படுகிறது (UI-ல் மட்டும் hide பண்ணி இல்லை).
@@ -116,4 +136,4 @@ Firestore-ல்:
 - Package/quota totals-ஐ ஒரு உறுப்பினரால் தானாக தன் account-க்கு கொடுக்க முடியாது — `admins` collection-ல் uid பட்டியலிடப்பட்ட கணக்குகள் மட்டுமே Package assign பண்ண முடியும். உறுப்பினர் தன் own credits-ஐ unlock பண்ணும்போது மட்டுமே தன் quota-ஐ தொட முடியும் (அதுவும் ஏற்கனவே granted அளவுக்கு மேல் போக முடியாது).
 - ஆர்வம் தெரிவித்தவர்களின் தொடர்பு விவரங்கள் நிர்வாகி + அனுப்பியவர் + பெறுபவர் மட்டுமே பார்க்க முடியும்.
 - நிர்வாகி கணக்குகள் website-ல் இருந்து யாரும் தானாக உருவாக்க முடியாது — Firebase Console-ல் நீங்கள் (owner) மட்டுமே **Authentication -> Users -> Add user** + **admins collection-ல் அவரது uid சேர்த்தல்** மூலம் புதிய நிர்வாகி கணக்கு கொடுக்க முடியும்.
-- Real WordPress (PHP/MySQL) வேண்டுமெனில் அதற்கு தனி PHP hosting தேவை — இந்த setup GitHub Pages/Firebase Hosting போன்ற static hosting-ல் இலவசமாக இயங்கும் வகையில் React + Firebase-ஐ பயன்படுத்துகிறது.
+- WordPress (PHP/MySQL) பதிப்புக்கு மேலே உள்ள "WordPress பதிப்பு" பகுதியைப் பார்க்கவும் — அதற்கு PHP hosting தேவை; React + Firebase பதிப்பு GitHub Pages/Firebase Hosting போன்ற static hosting-ல் இலவசமாக இயங்கும்.

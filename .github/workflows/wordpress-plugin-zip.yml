@@ -1,0 +1,20 @@
+name: Build WordPress plugin zip
+
+on:
+  push:
+    paths: ["wordpress/**", ".github/workflows/wordpress-plugin-zip.yml"]
+  workflow_dispatch: {}
+
+jobs:
+  zip:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lint PHP
+        run: find wordpress -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: Zip plugin
+        run: cd wordpress && zip -r ../madhi-matrimony.zip madhi-matrimony
+      - uses: actions/upload-artifact@v4
+        with:
+          name: madhi-matrimony-wordpress-plugin
+          path: madhi-matrimony.zip

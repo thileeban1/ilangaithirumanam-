@@ -1,0 +1,11 @@
+/* wp-admin layout for the Matrimony screens; reuses mm.css for the form. */
+.mm-admin-table td { vertical-align: middle; }
+.mm-admin-thumb { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; vertical-align: middle; margin-right: 8px; }
+.mm-actions a { margin-right: 10px; white-space: nowrap; }
+.mm-ok, .mm-ok-text { color: #2F7D4F; }
+.mm-danger, .mm-danger-text { color: #B23A48; }
+.mm-match-row td { background: #EAF7EE !important; }
+.mm-pkg-table input { width: 100%; }
+.mm-admin-cols { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; margin-top: 16px; }
+.mm-app.mm-admin-box { min-height: 0; margin: 0; padding: 20px; max-width: 520px; flex: 1 1 380px; border: 1px solid #EFDFC0; border-radius: 16px; }
+.mm-pkg-buttons { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
