@@ -1,0 +1,141 @@
+/* Madhi Matrimony — ported from the React app's inline styles (src/App.jsx). */
+.mm-app {
+	--mm-bg: #FCF6EA;
+	--mm-ink: #2E1B12;
+	--mm-maroon: #6B1A38;
+	--mm-maroon-2: #7A1F3D;
+	--mm-gold: #A9720F;
+	--mm-line: #EFDFC0;
+	--mm-line-2: #E3CCA0;
+	--mm-muted: #7A6353;
+	--mm-faint: #9C8874;
+	--mm-label: #8A6D4E;
+	--mm-ok: #2F7D4F;
+	--mm-danger: #B23A48;
+	--mm-gold-grad: linear-gradient(135deg, #E9C36B 0%, #C9973B 100%);
+	max-width: 640px;
+	margin: 0 auto;
+	min-height: 100vh;
+	background: var(--mm-bg);
+	color: var(--mm-ink);
+	font-family: 'Inter', 'Noto Sans Tamil', sans-serif;
+	padding-bottom: 50px;
+	box-sizing: border-box;
+	font-size: 15px;
+	line-height: 1.5;
+	text-align: left;
+}
+.mm-app *, .mm-app *::before, .mm-app *::after { box-sizing: border-box; }
+.mm-app a { color: var(--mm-maroon-2); }
+.mm-app [hidden] { display: none !important; }
+
+.mm-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 16px 18px; border-bottom: 1px solid var(--mm-line); position: sticky; top: 0; background: var(--mm-bg); z-index: 5; }
+.mm-app .mm-brand { background: #fff; color: var(--mm-maroon-2); border: 1px solid var(--mm-line-2); border-radius: 8px; padding: 8px 14px; font-family: 'Fraunces', serif; font-weight: 700; font-size: 14px; max-width: 70%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-decoration: none; }
+.mm-app .mm-gear { color: #C9AE8C; font-size: 17px; padding: 7px 10px; text-decoration: none; }
+
+.mm-banner { position: relative; overflow: hidden; margin: 18px 18px 0; border-radius: 16px; padding: 26px 22px; background: linear-gradient(135deg, #6B1A38 0%, #8B2748 55%, #7A1F3D 100%); border: 1px solid #D8B978; }
+.mm-rings { position: absolute; top: 10px; right: 10px; }
+.mm-eyebrow { font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; letter-spacing: .16em; color: var(--mm-gold); text-transform: uppercase; margin-bottom: 8px; }
+.mm-app .mm-h1 { font-family: 'Fraunces', serif; font-weight: 600; font-size: 25px; line-height: 1.25; margin: 0 0 8px; color: var(--mm-maroon); text-wrap: balance; }
+.mm-sub { color: var(--mm-muted); font-size: 14px; line-height: 1.55; margin: 0; }
+.mm-on-dark { color: #F6E3B4; }
+.mm-app .mm-on-dark-strong { color: #FFF6E6; padding-right: 80px; }
+.mm-on-dark-soft { color: #F1D9C9; }
+
+.mm-section { padding: 22px 18px 0; }
+.mm-section-title { font-family: 'Fraunces', serif; font-size: 19px; font-weight: 600; margin: 0 0 14px; color: var(--mm-maroon); }
+.mm-pad { padding: 0 18px; }
+
+.mm-app .mm-role-card { display: flex; align-items: center; gap: 14px; width: 100%; padding: 18px; border-radius: 16px; border: 1px solid #A67A24; background: var(--mm-gold-grad); color: #4A1020; margin-bottom: 14px; font-size: 16.5px; font-family: 'Fraunces', serif; box-shadow: 0 6px 16px -6px rgba(201, 151, 59, .55); text-decoration: none; }
+.mm-app .mm-role-card-rose { justify-content: space-between; border-color: #D988AC; background: linear-gradient(135deg, #F9D3E4 0%, #EFA9C9 100%); color: #5A1030; box-shadow: 0 6px 16px -6px rgba(216, 136, 172, .5); }
+.mm-role-inner { display: flex; align-items: center; gap: 14px; }
+.mm-role-icon { font-size: 26px; }
+.mm-count { background: #8A2C52; color: #fff; border-radius: 999px; min-width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; font-size: 12.5px; font-weight: 700; padding: 0 8px; font-family: 'IBM Plex Mono', monospace; }
+
+.mm-card { background: #fff; border: 1px solid var(--mm-line); border-radius: 16px; padding: 20px; margin: 0 18px 16px; }
+.mm-card-flush { margin: 0; }
+.mm-card > p:last-child, .mm-card p.mm-muted:only-child { margin-bottom: 0; }
+.mm-label { font-size: 13px; color: var(--mm-label); display: block; margin-bottom: 8px; font-weight: 600; }
+.mm-app .mm-input { display: block; width: 100%; padding: 12px 14px; border-radius: 10px; border: 1.5px solid var(--mm-line-2); background: #FFFDF8; color: var(--mm-ink); font-size: 14.5px; margin: 0 0 12px; font-family: inherit; height: auto; box-shadow: none; }
+.mm-app .mm-textarea { min-height: 90px; resize: vertical; }
+.mm-app .mm-mb0 { margin-bottom: 0; }
+.mm-row2 { display: flex; gap: 10px; }
+.mm-row2 > div { flex: 1; }
+
+.mm-app .mm-btn-primary, .mm-app .mm-btn-ghost, .mm-app .mm-btn-whatsapp { display: flex; align-items: center; justify-content: center; gap: 9px; width: 100%; padding: 13px 16px; border-radius: 999px; font-size: 14.5px; font-weight: 700; cursor: pointer; font-family: inherit; text-decoration: none; text-align: center; line-height: 1.3; }
+.mm-app .mm-btn-primary { border: none; background: var(--mm-gold-grad); color: #4A1020; box-shadow: 0 4px 14px -4px rgba(201, 151, 59, .6); }
+.mm-app .mm-btn-ghost { border: 1.5px solid var(--mm-maroon-2); background: transparent; color: var(--mm-maroon-2); }
+.mm-app .mm-btn-whatsapp { border: none; background: linear-gradient(180deg, #2CE874 0%, #22C35E 100%); color: #04240F; box-shadow: 0 6px 18px -6px rgba(37, 211, 102, .55); }
+.mm-app button:disabled { opacity: .55; cursor: not-allowed; }
+.mm-app .mm-btn-auto { width: auto; padding: 9px 18px; }
+.mm-btn-row { display: flex; gap: 10px; }
+
+.mm-err { background: #FDECEC; border: 1px solid #E8A9A9; color: #8A2C2C; padding: 11px 14px; border-radius: 10px; font-size: 13.5px; margin: 16px 18px; }
+.mm-flash { background: #EAF7EE; border: 1px solid #8FCB9F; color: #1F5C34; padding: 9px 14px; border-radius: 10px; font-size: 13px; margin: 16px 18px; }
+.mm-flash-inline { margin: 0; }
+
+.mm-app .mm-back { display: block; color: var(--mm-faint); font-size: 13px; padding: 14px 18px 0; font-family: 'IBM Plex Mono', monospace; text-decoration: none; }
+
+.mm-app .mm-profile-card { display: flex; gap: 14px; align-items: center; background: #fff; border: 1px solid var(--mm-line); border-radius: 14px; padding: 16px; margin: 0 18px 12px; text-decoration: none; color: inherit; }
+.mm-avatar { width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(160deg, #F6E3B4, #EAC97A); display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; overflow: hidden; border: 1px solid #D8B978; }
+.mm-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.mm-avatar-lg { width: 84px; height: 84px; font-size: 34px; border: none; }
+.mm-grow { flex: 1; min-width: 0; }
+.mm-card-title { font-family: 'Fraunces', serif; font-weight: 700; font-size: 16px; color: var(--mm-maroon); }
+.mm-profile-head { display: flex; gap: 16px; align-items: center; }
+.mm-thumbs { display: flex; gap: 10px; margin-top: 14px; }
+.mm-thumb { width: 70px; height: 70px; border-radius: 12px; overflow: hidden; border: 1px solid var(--mm-line-2); }
+
+/* Photos: no drag/right-click/long-press save, plus a tiled watermark naming
+   the viewer so a leaked screenshot can be traced. Can't stop screenshots. */
+.mm-app .mm-photo { position: relative; display: block; width: 100%; height: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; overflow: hidden; }
+.mm-protected { width: 100%; height: 100%; object-fit: cover; display: block; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; pointer-events: none; }
+.mm-watermark { position: absolute; inset: 0; pointer-events: none; overflow: hidden; display: flex; flex-wrap: wrap; align-content: space-around; justify-content: space-around; transform: rotate(-25deg) scale(1.5); }
+.mm-watermark span { font-size: 10px; color: rgba(255, 255, 255, .55); font-family: 'IBM Plex Mono', monospace; white-space: nowrap; text-shadow: 0 0 2px rgba(0, 0, 0, .85); }
+.mm-zoom { position: fixed; inset: 0; background: rgba(4, 6, 10, .94); z-index: 100000; display: flex; align-items: center; justify-content: center; padding: 24px; }
+.mm-zoom-frame { position: relative; width: 100%; max-width: 420px; aspect-ratio: 1 / 1; border-radius: 18px; overflow: hidden; border: 1px solid #D8B978; }
+.mm-app .mm-zoom-close { position: absolute; top: 18px; right: 18px; width: 38px; height: 38px; border-radius: 50%; border: 1.5px solid #D8B978; background: rgba(11, 18, 32, .8); color: #FDF6E3; font-size: 20px; cursor: pointer; line-height: 34px; padding: 0; }
+
+.mm-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; margin: 12px 0; }
+.mm-info-label { font-size: 11.5px; color: var(--mm-faint); text-transform: uppercase; letter-spacing: .05em; }
+.mm-info-value { font-size: 14px; color: var(--mm-ink); margin-bottom: 6px; word-break: break-word; }
+.mm-about { color: var(--mm-ink); font-size: 14px; line-height: 1.6; }
+.mm-big-id { font-family: 'IBM Plex Mono', monospace; font-size: 26px; font-weight: 700; color: var(--mm-gold); margin-bottom: 14px; }
+
+.mm-pkg { padding: 10px 0; border-bottom: 1px solid var(--mm-line); }
+.mm-pkg-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.mm-pkg-name { font-weight: 700; color: var(--mm-maroon); }
+.mm-pkg-price { color: var(--mm-gold); font-family: 'IBM Plex Mono', monospace; font-size: 13px; text-align: right; }
+.mm-pkg-meta { color: var(--mm-muted); font-size: 12.5px; margin-top: 3px; }
+
+.mm-item { background: #FBF5EA; border: 1px solid var(--mm-line); border-radius: 10px; padding: 12px; margin-bottom: 8px; }
+.mm-app .mm-item-link { font-weight: 700; font-size: 14px; color: var(--mm-maroon-2); text-decoration: underline; }
+.mm-item-title { font-weight: 700; font-size: 14px; }
+.mm-item p { margin: 8px 0 0; }
+
+.mm-photo-previews { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.mm-photo-preview { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 12px; color: var(--mm-danger); }
+.mm-photo-preview img { width: 84px; height: 84px; border-radius: 12px; object-fit: cover; border: 1px solid var(--mm-line-2); display: block; }
+
+.mm-muted { color: var(--mm-muted); font-size: 14px; line-height: 1.6; }
+.mm-small { font-size: 13px; }
+.mm-hint { color: var(--mm-faint); font-size: 12.5px; margin: -6px 0 12px; }
+.mm-item .mm-hint, .mm-pad.mm-hint, .mm-center.mm-hint, .mm-pager .mm-hint { margin: 3px 0 0; }
+.mm-center { text-align: center; }
+.mm-mt { margin-top: 12px; }
+.mm-mt-lg { margin-top: 22px; }
+.mm-mb { margin-bottom: 10px; }
+.mm-ok-text { color: var(--mm-ok); font-size: 13.5px; margin: 0; }
+.mm-danger-text { color: var(--mm-danger); }
+.mm-maroon { color: var(--mm-maroon); }
+.mm-pager { display: flex; justify-content: center; align-items: center; gap: 12px; padding: 4px 18px 16px; }
+.mm-app .mm-pill { border: 1.5px solid #D8B978; color: #6B4A22; background: #fff; border-radius: 999px; padding: 7px 16px; font-size: 12.5px; font-family: 'IBM Plex Mono', monospace; white-space: nowrap; text-decoration: none; }
+
+.mm-nav-spacer { height: 74px; }
+.mm-bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; display: flex; background: #fff; border-top: 1px solid var(--mm-line); box-shadow: 0 -4px 14px -6px rgba(74, 16, 32, .15); z-index: 1000; }
+.mm-app .mm-bottom-nav a { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 4px 8px; color: var(--mm-faint); font-weight: 500; font-size: 11.5px; text-decoration: none; }
+.mm-app .mm-bottom-nav a.is-active { color: var(--mm-maroon-2); font-weight: 700; }
+.mm-nav-icon { font-size: 20px; }
+.mm-card > p:first-child { margin-top: 0; }
+.mm-app select.mm-input { max-width: none; min-height: 0; line-height: 1.4; }
+.mm-pad .mm-btn-whatsapp { margin-top: 16px; }
